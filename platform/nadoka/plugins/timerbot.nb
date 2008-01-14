@@ -1,0 +1,53 @@
+#!/bin/ruby -Ku
+# Copyright(c) 2005 URABE, Shyouhei.
+#
+# Permission is hereby granted, free of  charge, to any person obtaining a copy
+# of  this code, to  deal in  the code  without restriction,  including without
+# limitation  the rights  to  use, copy,  modify,  merge, publish,  distribute,
+# sublicense, and/or sell copies of the code, and to permit persons to whom the
+# code is furnished to do so, subject to the following conditions:
+#
+#        The above copyright notice and this permission notice shall be
+#        included in all copies or substantial portions of the code.
+#
+# THE  CODE IS  PROVIDED "AS  IS",  WITHOUT WARRANTY  OF ANY  KIND, EXPRESS  OR
+# IMPLIED,  INCLUDING BUT  NOT LIMITED  TO THE  WARRANTIES  OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE  AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHOR  OR  COPYRIGHT  HOLDER BE  LIABLE  FOR  ANY  CLAIM, DAMAGES  OR  OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF  OR IN CONNECTION WITH  THE CODE OR THE  USE OR OTHER  DEALINGS IN THE
+# CODE.
+
+require 'time'
+
+class TimerBot < Nadoka::NDK_Bot
+	def on_privmsg p, c, s
+		return unless /\A *(alarm|alert)/n.match(s)
+		m = /\A *(alarm|alert) *(on|at) *(.*) *>(.*)/e.match(NKF.nkf('-Jem0', s))
+		return if m.nil?
+		t = Time.parse m[3]
+		if t > Time.now then
+			Thread.start do
+				sleep t - Time.now
+				send_privmsg c, "#{p.nick}: #{NKF.nkf('-Ejm0', m[4])} (timer)"
+			end
+			send_notice c, "ok, will send you a notice on #{t}"
+		else
+			send_notice c, "#{Time.now - t} sec before..."
+		end
+	rescue
+		send_notice c, "malformed request, sorry."
+	end
+end
+
+
+# Local Variables:
+# mode: ruby
+# coding: utf-8
+# indent-tabs-mode: t
+# tab-width: 3
+# ruby-indent-level: 3
+# fill-column: 79
+# default-justification: full
+# End:
+# vi: ts=3 sw=3

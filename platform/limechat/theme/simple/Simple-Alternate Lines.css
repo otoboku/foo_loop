@@ -1,0 +1,85 @@
+html {
+  font-family: 'Lucida Grande';
+  font-size: 8pt;
+  background-color: white;
+  color: black;
+  word-wrap: break-word;
+  margin: 0;
+  padding: 3px 4px 10px 4px;
+}
+
+body { margin: 0; padding: 0px; }
+body.console {}
+body.normal {}
+
+hr { margin: 0.5em 2em; }
+
+.url { word-break: break-all; }
+.address { text-decoration: underline; word-break: break-all; }
+.highlight { color: #f0f; font-weight: bold; }
+.line { 
+  margin: 0 -4px; 
+  padding: 3px 4px 4px;
+  position: relative;
+/*  border-bottom: 1px solid #eee;*/
+}
+.line:hover { 
+  color: #fff;
+  background: #0078d9;
+}
+.line:hover * { 
+  color: #fff;
+}
+.even_line {}
+.odd_line {
+  background: #e9f3fe;
+}
+
+.time { 
+  padding: 0 2px 1px;
+  color: #fff;
+  display: block;
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  text-align: right;
+  border: 1px solid #0078d9;
+  background: #0078d9;
+  opacity: 0.5;
+  -webkit-border-radius: 7px;
+}
+.line:hover .time { 
+  color: #0078d9;
+  border: 1px solid #fff;
+  background: #fff;
+  opacity: 1;
+}
+
+.place { color: #008; }
+
+.nick_normal,
+.nick_myself { 
+  padding: 0 0 2px 0;
+  color: #0055ab;
+  font-weight: bold;
+  display: block;
+}
+.nick_myself { 
+  color: #E5496A;
+}
+
+.privmsg {}
+.notice { color: #666; }
+.action { color: #98934F; }
+.reply { color: #088; }
+
+.error { color: #f00; font-weight: bold; }
+.error_reply { color: #f00; }
+.dcc_send_send { color: #088; }
+.dcc_send_receive { color: #00c; }
+.debug_send { color: #aaa; }
+.debug_receive { color: #444; }
+
+.system, .join, .part, .kick, .quit, .kill, .nick, .mode, .topic, .invite, .wallops {
+  color: #98934F;
+}

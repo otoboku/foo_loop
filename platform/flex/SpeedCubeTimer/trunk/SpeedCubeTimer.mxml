@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<mx:Application
+   xmlns:mx="http://www.adobe.com/2006/mxml"
+   backgroundColor="white"
+   layout="vertical"
+   verticalAlign="middle"
+   creationComplete="init()"
+>
+
+  <mx:Style>
+    Button { fontSize: 12pt; fontFamily: "Trebuchet MS"; }
+    Label { fontSize: 96pt; fontFamily: "Trebuchet MS"; }
+    Alert { fontSize: 14pt; fontFamily: "Trebuchet MS"; }
+    TextInput { borderStyle: none; backgroundColor: transparent; }
+    .caption { fontSize: 12pt; }
+  </mx:Style>
+
+  <mx:Script source="SpeedCubeTimer.as" />
+
+  <mx:ApplicationControlBar dock="true">
+    <mx:Button id="timerButton" label="Start &amp; Stop" click="toggleTimer();" />
+    <mx:Button id="resetButton" label="Reset" click="resetTimer();" />
+    <mx:Button id="scrambleButton" label="Scramble Cube" click="scrambleCube();" />
+    <mx:Button id="aboutButton" label="About" click="showAbout();" />
+  </mx:ApplicationControlBar>
+
+  <mx:Label id="counter" />
+  <mx:TextInput id="scramble" styleName="caption" editable="false" />
+
+</mx:Application>

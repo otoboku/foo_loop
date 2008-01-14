@@ -1,0 +1,27 @@
+nadoka用プラグイン置場。
+
+* timerbot.nb
+  指定した時間になんか言う
+
+* nkmrybot.nb
+  中村屋っ
+  # 動かすにはめかぶが必要
+
+* mlabot.nb
+  MLアーカイバへのURLを出す
+
+* rfcbot.nb
+  RFCへのURLを出す
+  先頭にコメントで書いてあるcrontabを登録すること。
+
+* titlebot.nb
+  URLが張られたときにタイトルを調査する
+
+
+# Local Variables:
+# mode: text
+# indent-tabs-mode: t
+# tab-width: 8
+# fill-column: 79
+# default-justification: full
+# End:

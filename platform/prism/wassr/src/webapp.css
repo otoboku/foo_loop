@@ -1,0 +1,204 @@
+/* ========== Base Settings ========== */
+#Header,
+#globalmenu,
+#Side,
+#Footer,
+#My #BloMotion,
+#Home .sideQR,
+.PageBody-shd,
+#Home #SideMainMenu,
+.centerbanner,
+#MoreMoreLink1,
+.MoreMorePageNav,
+.MoreMoreSeparater,
+#SideMainMenu,
+#PictogramPickup {
+    display: none !important;
+}
+#Contents {
+	background-image:none!important;
+	background-repeat:repeat-x !important;
+	padding: 0 !important;
+}
+#PageBody #BodyWrapper {
+	width:auto !important;
+	margin:0 auto !important;
+	padding:0 0 0 0 !important;
+	text-align:left !important;
+}
+#PageBody #BodyWrapper #Main {
+	float:none !important;
+	width:auto !important;
+}
+
+#PageBody #BodyWrapper #Main .Main-hd,
+#PageBody #BodyWrapper #Main .Main-ft {
+	display:none !important;
+}
+#PageBody #BodyWrapper #Main .Main-contents {
+	background-color:#000 !important;
+	background-image:url(http://shout.aoki.t2.mfac.jp/img/prism/black/bg-base.png) !important;
+	background-repeat:repeat-x !important;
+	color:#fff !important;
+}
+#Main .OneTopic {
+	width:auto !important;
+}
+
+a {
+	color:#eeeeee !important;
+}
+a:visited {
+	color:#eeeeee !important;
+}
+a:active {
+	color:#eeeeee !important;
+}
+a:hover {
+	color:#eeeeee !important;
+}
+
+/* ========== HeadBox ========== */
+#Main #HeadBox .MsgSide,
+#Main #HeadBox .Update .UpdateHd,
+#Main #HeadBox .Update #EmojiPaletSwitch,
+#Main #HeadBox .Update .RecentEmoji {
+	display:none !important;
+}
+#Main #HeadBox {
+	background-color:#242424 !important;
+	border:1px solid #474747 !important;
+	background-image:none !important;
+	padding:0px!important;
+	margin: 0px auto 10px auto!important;
+}
+#Main #HeadBox .MsgBody {
+	padding:0px!important;
+	margin:0px !important;
+}
+#Main #HeadBox .MsgBody .Update {
+	background-image:url(http://shout.aoki.t2.mfac.jp/img/prism/black/bg-update.png) !important;
+	background-repeat:repeat-x !important;
+	border:1px solid #000 !important;
+	background-color:transparent !important;
+	padding:4px !important;
+}
+#Main #HeadBox .MsgBody .Update form {
+}
+#Main #HeadBox .MsgBody .Update form textarea {
+	font-size:100% !important;
+	width:96% !important;
+}
+#Main #HeadBox .MsgBody .Update form .submit-btn {
+	margin: 4px auto 0px auto!important;
+}
+#Main #HeadBox .MsgBody .Update form .submit-btn input {
+	font-size:90% !important;
+}
+
+
+/* ========== Messages ========== */
+#Main .OneMsg {
+	width:auto !important;
+	background-color:#333 !important;
+	background-image:url(http://shout.aoki.t2.mfac.jp/img/prism/black/bg-message.png) !important;
+	background-repeat:no-repeat !important;
+	border:1px solid #666 !important;
+	margin-bottom:2px !important;
+	padding:4px 3px !important;
+}
+#Main .OneMsg .MsgBody,
+#Main .OneMsg .MsgBody-full {
+	width:auto !important;
+	float:none !important;
+	margin-left:42px !important;
+}
+#Main #HeadBox .MsgBody {
+	margin-left:0px !important;
+}
+#Main .ttlLv1 {
+    display: none !important;
+}
+
+#Main .OneMsg .MsgSide {
+	width:40px !important;
+	float:left !important;
+	margin-right:5px !important;
+}
+#Main .OneMsg .MsgSide .UserThumb32 {
+	background-image:none !important;
+	padding:0px 0px 0px 0px !important;
+}
+#Main .OneMsg .MsgBody .message {
+}
+#Main .OneMsg .MsgBody .message .inlineicon {
+    display: none !important;
+}
+#Main .OneMsg .MsgBody .messagefoot {
+}
+
+/* ========== Pager ========== */
+.PageNav a {
+	background-color:#333 !important;
+	background-image:none !important;
+	border:1px solid #666 !important;
+}
+.PageNav span.current {
+	background-color:#333 !important;
+	background-image:none !important;
+	border:1px solid #666 !important;
+}
+.PageNav a:hover {
+	background-color:#333 !important;
+	background-image:none !important;
+	border:1px solid #666 !important;
+}
+
+
+/* ========== Others ========== */
+#Main ul.UserList,
+#Main ul.UserList li,
+#Main ul.UserList li.large,
+#Main ul.MessageList,
+#Main .MsgBody ul.MessageList,
+#Main .MsgBody-full ul.MessageList,
+#Main ul.MessageList li,
+#Main .MsgBody ul.MessageList li,
+#Main .MsgBody-full ul.MessageList li,
+#Main ul.ToDoList,
+#Main ul.ToDoList li {
+	width:auto !important;
+}
+
+#Help #Main  .abouttop-pic,
+#Help #Main .abouttop-txt,
+#Help #Main #AboutContent p,
+#Help #Main #AboutContent .ttlLv2nb,
+#Help #Main #AboutContent p.aboutimg {
+	width:auto !important;
+	float:none !important;
+}
+
+
+/* ========== GotoMyPage ========== */ 
+#GotoMyPageLink {
+	font-size:83% !important;
+	display: block !important;
+	background-color:#333 !important;
+	background-image:none !important;
+	border:1px solid #666 !important;
+	padding:3px !important;
+}
+#GotoMyPageLink a {
+	color:#fff;
+}
+
+
+/* ========== TOP ========== */
+#Home #topflash {
+	display:none !important;
+}
+#Home #PageBody #BodyWrapper #Main .Main-contents {
+	display:none !important;
+}
+

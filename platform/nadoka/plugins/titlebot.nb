@@ -1,0 +1,122 @@
+#!/bin/ruby -Ku
+# Copyright(c) 2006 URABE, Shyouhei.
+#
+# Permission is hereby granted, free of  charge, to any person obtaining a copy
+# of  this code, to  deal in  the code  without restriction,  including without
+# limitation  the rights  to  use, copy,  modify,  merge, publish,  distribute,
+# sublicense, and/or sell copies of the code, and to permit persons to whom the
+# code is furnished to do so, subject to the following conditions:
+#
+#        The above copyright notice and this permission notice shall be
+#        included in all copies or substantial portions of the code.
+#
+# THE  CODE IS  PROVIDED "AS  IS",  WITHOUT WARRANTY  OF ANY  KIND, EXPRESS  OR
+# IMPLIED,  INCLUDING BUT  NOT LIMITED  TO THE  WARRANTIES  OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE  AND NONINFRINGEMENT.  IN NO EVENT SHALL THE
+# AUTHOR  OR  COPYRIGHT  HOLDER BE  LIABLE  FOR  ANY  CLAIM, DAMAGES  OR  OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF  OR IN CONNECTION WITH  THE CODE OR THE  USE OR OTHER  DEALINGS IN THE
+# CODE.
+
+require 'open-uri'
+
+module ANY2JIS
+	begin
+		require 'iconv'
+		def any2jis c, s
+			Iconv.conv 'ISO-2022-JP', c, s
+		rescue
+			return nil
+		end
+	rescue LoadError
+		begin
+			require 'nkf'
+			def any2jis c, s
+				a = case c
+					 when /iso[-_]2022[-_]jp/ni
+						 '-Jjm0'
+					 when /euc[-_]jp/ni
+						 '-Ejm0'
+					 when /shift[-_]jis/ni, /sjis/ni
+						 '-Sjm0'
+					 when /utf[-_]8/ni
+						 '-W8jm0'
+					 when /utf[-_]16/ni
+						 '-W16jm0'
+					 else
+						 return nil
+					 end
+				NKF.nkf a, s
+			end
+		rescue LoadError
+			def any2jis
+				return nil
+			end
+		end
+	end
+end
+
+class TitleBot < Nadoka::NDK_Bot
+	include ANY2JIS
+
+	Schema = %r'(?:(?:(?:(?:h)?t)?t)?p)?://'n
+	Host   = %r'[0-9a-zA-Z_.-]+'n
+	Path   = %r"/[a-zA-Z0-9_.!~*';/?:@&=+$,\[\]-]*"n
+	def get_title s
+		# 1. get possible URI component
+		u = if m = /\((#{Schema}.*?)\)/n.match s
+				 m[1]
+			 elsif m = /#{Schema}#{Host}(?:#{Path})?/n.match s
+				 m[0]
+			 else
+				 return nil
+			 end
+		# 2. get entity
+		open u do |f|
+			e = f.read
+			m = %r"<title>(.*?)</title>"nmi.match e
+			t = m ? m[1] : e
+			if c = f.charset
+				; # ok
+			else
+				if m = /charset=([^;">]+)/.match e
+					c = m[1]
+				else
+					# no way but guess
+					require NKF
+					return truncate(NKF.nkf('-jm0', t))
+				end
+			end
+			return truncate(any2jis(c, t))
+		end
+	end
+
+	def truncate s
+		return s unless s
+		return s if s.length <= 255
+		return s[0..256]+'...'
+	end
+
+	def on_privmsg p, c, s
+		return unless @bot_config[:ch].match(c)
+		return if @bot_config[:ch2].match(c)
+		return unless m = (%r'://'.match(s))
+		return if /^biff/.match(s)
+		t = get_title(s)
+		send_notice c, t if t
+	rescue
+		;
+	end
+end
+
+
+# Local Variables:
+# mode: ruby
+# coding: utf-8
+# indent-tabs-mode: t
+# tab-width: 3
+# ruby-indent-level: 3
+# fill-column: 79
+# default-justification: full
+# End:
+# vi: ts=3 sw=3

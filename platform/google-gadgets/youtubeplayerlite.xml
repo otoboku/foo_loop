@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<Module>
+  <ModulePrefs
+    title="Youtube Player Lite"
+    title_url="http://fplayer.youtubech.com/"
+    description="It shows ``Youtube Player Lite`` as Google Gadgets"
+    author="Hironori Yoshida"
+    author_email="hironori.yoshida@gmail.com"
+    height="240"
+    width="450"
+    scrolling="false"
+    />
+  <Content type="html"><![CDATA[
+    <iframe src="http://fplayer.youtubech.com/light/index?mode=light&amp;q=&amp;vid=&amp;selected_id=&amp;auto_start=&amp;que=" height="240" width="450" />
+    ]]></Content>
+</Module>

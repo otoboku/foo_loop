@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<movie version="6" width="480" height="272" framerate="30">
+<background color="#000000"/>
+  <library>
+    <clip id="bar_task" import="assets/bar_task.png" />
+    <clip id="bar_time" import="assets/bar_time.png" />
+    <clip id="bg" import="assets/bg.png" />
+    <clip id="l_0" import="assets/l_0.png" />
+    <clip id="l_1" import="assets/l_1.png" />
+    <clip id="l_2" import="assets/l_2.png" />
+    <clip id="l_3" import="assets/l_3.png" />
+    <clip id="l_4" import="assets/l_4.png" />
+    <clip id="l_5" import="assets/l_5.png" />
+    <clip id="l_6" import="assets/l_6.png" />
+    <clip id="l_7" import="assets/l_7.png" />
+    <clip id="l_8" import="assets/l_8.png" />
+    <clip id="l_9" import="assets/l_9.png" />
+    <clip id="l_colon" import="assets/l_colon.png" />
+    <clip id="m_0" import="assets/m_0.png" />
+    <clip id="m_1" import="assets/m_1.png" />
+    <clip id="m_2" import="assets/m_2.png" />
+    <clip id="m_3" import="assets/m_3.png" />
+    <clip id="m_4" import="assets/m_4.png" />
+    <clip id="m_5" import="assets/m_5.png" />
+    <clip id="m_6" import="assets/m_6.png" />
+    <clip id="m_7" import="assets/m_7.png" />
+    <clip id="m_8" import="assets/m_8.png" />
+    <clip id="m_9" import="assets/m_9.png" />
+    <clip id="m_colon" import="assets/m_colon.png" />
+    <clip id="m_percent" import="assets/m_percent.png" />
+    <clip id="m_slash" import="assets/m_slash.png" />
+    <clip id="s_0" import="assets/s_0.png" />
+    <clip id="s_1" import="assets/s_1.png" />
+    <clip id="s_2" import="assets/s_2.png" />
+    <clip id="s_3" import="assets/s_3.png" />
+    <clip id="s_4" import="assets/s_4.png" />
+    <clip id="s_5" import="assets/s_5.png" />
+    <clip id="s_6" import="assets/s_6.png" />
+    <clip id="s_7" import="assets/s_7.png" />
+    <clip id="s_8" import="assets/s_8.png" />
+    <clip id="s_9" import="assets/s_9.png" />
+    <clip id="s_colon" import="assets/s_colon.png" />
+  </library>
+  <frame/>
+</movie>
