@@ -7,7 +7,6 @@
 
 #include <foobar2000.h>
 #include <helpers.h>
-#include <memory>
 
 
 // TODO: reference additional headers your program requires here
