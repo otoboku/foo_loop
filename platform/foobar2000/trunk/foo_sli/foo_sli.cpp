@@ -705,6 +705,8 @@ public:
 		}
 	}
 
+	// process labels between specified positions.
+	// return true if you should be update m_nextlabelpos, otherwise false.
 	inline bool process_labels(t_uint64 p_start, t_uint64 p_end) {
 		if (no_looping || no_flags) return false;
 		if (p_start == cur && m_nextlabelpos > p_end) {
@@ -840,7 +842,7 @@ public:
 			break;
 		}
 		if (cur != end) {
-			// dispatch labels (because all link not matched)
+			// process labels (because all link not matched)
 			process_labels(labelprocessed, end);
 		}
 		schedule_nextevent(end);
@@ -871,12 +873,9 @@ public:
 					format_samples_ex(m_nextlabelpos, sample_rate) : "None");
 				pfc::string8 buf;
 				t_size num = m_flags.get_size();
-				for ( t_size i = 0; i < num; i++ ) {
-					if (!buf.is_empty())
-						buf << "/";
-					buf << "[" << i << "]=" << m_flags[i];
-				}
-				p_out.info_set("sli_flags", buf);
+				for ( t_size i = 0; i < num; i++ )
+					buf << "/[" << i << "]=" << m_flags[i];
+				p_out.info_set("sli_flags", buf+1);
 			}
 			m_lastupdatedynamic = cur;
 			ret = true;
@@ -920,5 +919,5 @@ private:
 static input_singletrack_factory_t<input_sli> g_input_sli_factory;
 
 
-DECLARE_COMPONENT_VERSION("sli repeator","0.1-test",NULL);
+DECLARE_COMPONENT_VERSION("sli repeator","0.1-dev",NULL);
 DECLARE_FILE_TYPE("sli loop information file","*.SLI");
