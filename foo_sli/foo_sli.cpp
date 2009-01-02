@@ -4,11 +4,11 @@
 // Licence: GPL v2 (check kirikiri 2 SDK License)
 
 /*
-  see also:
-    * http://devdoc.kikyou.info/tvp/docs/kr2doc/contents/LoopTuner.html
-    * https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/license.txt
-    * https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveLoopManager.h
-    * https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveLoopManager.cpp
+see also:
+	* http://devdoc.kikyou.info/tvp/docs/kr2doc/contents/LoopTuner.html
+	* https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/license.txt
+	* https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveLoopManager.h
+	* https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveLoopManager.cpp
 	* https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveSegmentQueue.h
 	* https://sv.kikyou.info/trac/kirikiri/browser/kirikiri2/trunk/kirikiri2/src/core/sound/WaveSegmentQueue.cpp
 */
