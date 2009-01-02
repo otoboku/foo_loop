@@ -97,22 +97,10 @@ namespace {
 
 	class formula_operator_dec : public formula_operator {
 	public:
-		formula_operator_dec() : formula_operator("--", true) {}
+		formula_operator_dec() : formula_operator("--", false) {}
 		virtual unsigned int calculate(unsigned int original, unsigned int operand) {
 			if (original >= 1) return original - 1;
 			else return 0;
-		}
-	};
-
-	class formula_operand {
-	public:
-		bool indirect;
-		unsigned int value;
-		unsigned int resolve(t_flags_array & flags) {
-			if (!indirect) return value;
-			if (flags.get_size() < value)
-				throw pfc::exception_overflow();
-			return flags[value];
 		}
 	};
 	
