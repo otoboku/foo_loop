@@ -19,6 +19,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foo_sli", "foo_sli\foo_sli.
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foobar2000_ATL_helpers", "SDK\foobar2000\ATLHelpers\foobar2000_ATL_helpers.vcproj", "{622E8B19-8109-4717-BD4D-9657AA78363E}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "foo_loop", "foo_loop\foo_loop.vcproj", "{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E8091321-D79D-4575-86EF-064EA1A4A20D} = {E8091321-D79D-4575-86EF-064EA1A4A20D}
+		{EE47764E-A202-4F85-A767-ABDAB4AFF35F} = {EE47764E-A202-4F85-A767-ABDAB4AFF35F}
+		{EBFFFB4E-261D-44D3-B89C-957B31A0BF9C} = {EBFFFB4E-261D-44D3-B89C-957B31A0BF9C}
+		{71AD2674-065B-48F5-B8B0-E1F9D3892081} = {71AD2674-065B-48F5-B8B0-E1F9D3892081}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -73,6 +81,12 @@ Global
 		{622E8B19-8109-4717-BD4D-9657AA78363E}.Release|Win32.Build.0 = Release|Win32
 		{622E8B19-8109-4717-BD4D-9657AA78363E}.Release|x64.ActiveCfg = Release|x64
 		{622E8B19-8109-4717-BD4D-9657AA78363E}.Release|x64.Build.0 = Release|x64
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Debug|Win32.Build.0 = Debug|Win32
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Debug|x64.ActiveCfg = Debug|Win32
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Release|Win32.ActiveCfg = Release|Win32
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Release|Win32.Build.0 = Release|Win32
+		{055F1D71-2B4A-4DD3-9DB8-0563A13D451A}.Release|x64.ActiveCfg = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
