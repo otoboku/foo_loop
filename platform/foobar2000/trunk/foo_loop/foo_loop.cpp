@@ -28,7 +28,7 @@ public:
 		pfc::string8 looptype;
 		parse_looptype(p_content, looptype);
 		pfc::string8 p_content_basepath;
-		p_content_basepath.set_string(p_path, pfc::strlen_utf8(p_path) - 5); // .loop
+		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 5); // .loop
 		service_enum_t<input_loop_type_entry> e;
 		input_loop_type_entry::ptr ptr;
 		while (e.next(ptr)) {

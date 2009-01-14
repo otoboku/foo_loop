@@ -695,7 +695,7 @@ public:
 		bool is_utf8;
 		text_file_loader::read(m_loopfile,p_abort,m_loopcontent,is_utf8);
 		pfc::string8 p_content_basepath;
-		p_content_basepath.set_string(p_path, pfc::strlen_utf8(p_path) - 4); // .sli
+		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 4); // .sli
 		input_loop_type_entry::ptr ptr = new service_impl_t<input_loop_type_impl_t<input_loop_type_sli>>();
 		input_loop_type::ptr instance = new service_impl_t<input_loop_type_sli>();
 		if (instance->parse(m_loopcontent) && instance->open_path(NULL, p_content_basepath, p_abort, true, false)) {
