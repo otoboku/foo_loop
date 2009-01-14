@@ -123,11 +123,7 @@ class input_loop_event_point_twofiles_eof : public input_loop_event_point_baseim
 public:
 	virtual t_uint64 get_position() const {return infinite64;}
 	virtual t_uint64 get_prepare_position() const {return infinite64;}
-	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
-		pfc::string8 name;
-		name << p_prefix << "on";
-		p_info.info_set(name, "(eof)");
-	}
+	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {}
 	virtual bool process(input_loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
 		// no truncate (because EOF)
 		return process(p_input, p_abort);
