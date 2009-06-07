@@ -206,6 +206,10 @@
 					/>
 				</FileConfiguration>
 			</File>
+			<File
+				RelativePath=".\thbgm_loop.cpp"
+				>
+			</File>
 		</Filter>
 		<Filter
 			Name="Header Files"

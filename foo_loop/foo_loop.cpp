@@ -29,12 +29,12 @@ public:
 		parse_looptype(p_content, looptype);
 		pfc::string8 p_content_basepath;
 		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 5); // .loop
-		service_enum_t<input_loop_type_entry> e;
-		input_loop_type_entry::ptr ptr;
+		service_enum_t<loop_type_entry> e;
+		loop_type_entry::ptr ptr;
 		while (e.next(ptr)) {
-			if ((looptype.is_empty() && !ptr->is_explicit())|| ptr->is_our_type(looptype)) {
-				input_loop_type::ptr instance = ptr->instantiate();
-				if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_abort, true, false)) {
+			if ((looptype.is_empty() && !ptr->is_explicit()) || ptr->is_our_type(looptype)) {
+				loop_type::ptr instance = ptr->instantiate();
+				if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
 					m_loopentry = ptr;
 					m_looptype = instance;
 					break;
@@ -44,9 +44,9 @@ public:
 
 		if (m_looptype.is_empty()) {
 			console::formatter() << "loop parsing failed, resume to normal playback: \"" << file_path_display(p_path) << "\"";
-			input_loop_type_entry::ptr ptr = new service_impl_t<input_loop_type_impl_t<input_loop_type_none>>();
-			input_loop_type::ptr instance = new service_impl_t<input_loop_type_none>();
-			if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_abort, true, false)) {
+			loop_type_entry::ptr ptr = new service_impl_t<loop_type_impl_t<loop_type_none>>();
+			loop_type::ptr instance = new service_impl_t<loop_type_none>();
+			if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
 				m_loopentry = ptr;
 				m_looptype = instance;
 			}
@@ -59,8 +59,8 @@ public:
 };
 
 
-static input_singletrack_factory_ex_t<input_loop, input_entry::flag_redirect, input_decoder_v2> g_input_loop_factory;
+static input_factory_ex_t<input_loop, input_entry::flag_redirect, input_decoder_v2> g_input_loop_factory;
 
 
-DECLARE_COMPONENT_VERSION("standard looping handler","0.1-dev",NULL);
+DECLARE_COMPONENT_VERSION("standard looping handler","0.2-dev",NULL);
 DECLARE_FILE_TYPE_EX("LOOP","Audio Loop Information File","Audio Loop Information Files");

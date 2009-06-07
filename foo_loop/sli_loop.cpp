@@ -104,10 +104,10 @@ public:
 	}
 };
 
-class sli_link : public input_loop_event_point_baseimpl {
+class sli_link : public loop_event_point_baseimpl {
 public:
 	virtual bool set_smooth_samples(t_size samples) = 0;
-	FB2K_MAKE_SERVICE_INTERFACE(sli_link, input_loop_event_point);
+	FB2K_MAKE_SERVICE_INTERFACE(sli_link, loop_event_point);
 };
 
 class sli_link_impl : public sli_link {
@@ -161,22 +161,26 @@ public:
 
 		p_info.info_set(name, buf);	
 	}
-	virtual bool check(input_loop_type_base::ptr p_input);
-	virtual bool process(input_loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort);
-	virtual bool process(input_loop_type_base::ptr p_input, abort_callback & p_abort) {
+	virtual void check() const {
+		if (from == to) throw exception_loop_bad_point();
+	}
+	virtual bool check_condition(loop_type_base::ptr p_input);
+	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort);
+	virtual bool process(loop_type_base::ptr p_input, abort_callback & p_abort) {
 		// this event do not process on no_looping
-		if (p_input->get_no_looping() || !check(p_input)) return false;
+		if (p_input->get_no_looping() || !check_condition(p_input)) return false;
 		p_input->raw_seek(to, p_abort);
 		return true;
 	}
 };
 
-class sli_label : public input_loop_event_point_baseimpl {
+class sli_label : public loop_event_point_baseimpl {
 public:
 	virtual t_uint64 get_position() const {return position;}
 	virtual t_uint64 get_prepare_position() const {return position;}
 	t_uint64 position;
 	pfc::string8 name;
+	virtual void check() const {}
 	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
 		pfc::string8 name, buf;
 		t_size prefixlen;
@@ -203,10 +207,10 @@ public:
 			}
 		}
 	}
-	virtual bool process(input_loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
+	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
 		return process(p_input, p_abort);
 	}
-	virtual bool process(input_loop_type_base::ptr p_input, abort_callback & p_abort);
+	virtual bool process(loop_type_base::ptr p_input, abort_callback & p_abort);
 };
 
 class sli_label_formula {
@@ -225,12 +229,12 @@ bool parse_sli_entity(const char * & ptr,pfc::string8 & name,pfc::string8 & valu
 	char delimiter = '\0';
 	char tmp;
 	t_size n = 0;
-	while(isspace(*ptr)) ptr++;
-	while(tmp = ptr[n], tmp && !isspace(tmp) && tmp != '=') n++;
+	while(isspace((unsigned char) *ptr)) ptr++;
+	while(tmp = ptr[n], tmp && !isspace((unsigned char) tmp) && tmp != '=') n++;
 	if (!ptr[n]) return false;
 	name.set_string(ptr, n);
 	ptr += n;
-	while(isspace(*ptr)) ptr++;
+	while(isspace((unsigned char) *ptr)) ptr++;
 	if (*ptr != '=') return false;
 	ptr++;
 	// check delimiter
@@ -242,7 +246,7 @@ bool parse_sli_entity(const char * & ptr,pfc::string8 & name,pfc::string8 & valu
 
 	n = 0;
 	if (delimiter == '\0') {
-		while(tmp = ptr[n], tmp && !isspace(tmp) && tmp != ';') n++;
+		while(tmp = ptr[n], tmp && !isspace((unsigned char) tmp) && tmp != ';') n++;
 	} else {
 		while(tmp = ptr[n], tmp && tmp != delimiter) n++;
 	}
@@ -250,7 +254,7 @@ bool parse_sli_entity(const char * & ptr,pfc::string8 & name,pfc::string8 & valu
 	value.set_string(ptr, n);
 	ptr += n;
 	if (*ptr == delimiter) ptr++;
-	while(*ptr == ';' || isspace(*ptr)) ptr++;
+	while(*ptr == ';' || isspace((unsigned char) *ptr)) ptr++;
 	return true;
 }
 
@@ -260,8 +264,8 @@ bool parse_sli_link(const char * & ptr,sli_link_impl &link) {
 	ptr++;
 
 	while (*ptr) {
-		if (isspace(*ptr)) {
-			while (isspace(*ptr)) ptr++;
+		if (isspace((unsigned char) *ptr)) {
+			while (isspace((unsigned char) *ptr)) ptr++;
 		} else if (*ptr == '}') {
 			break;
 		} else {
@@ -327,8 +331,8 @@ bool parse_sli_label(const char * & ptr,sli_label &label) {
 	ptr++;
 
 	while (*ptr) {
-		if (isspace(*ptr)) {
-			while (isspace(*ptr)) ptr++;
+		if (isspace((unsigned char) *ptr)) {
+			while (isspace((unsigned char) *ptr)) ptr++;
 		} else if (*ptr == '}') {
 			break;
 		} else {
@@ -476,11 +480,11 @@ void do_crossfade(audio_chunk & p_dest,t_size destpos,const audio_chunk & p_src,
 	do_crossfade(pd, pd, ps, nch, samples, ratiostart, ratioend);
 }
 
-class input_loop_type_sli : public input_loop_type_impl_singlefile_base
+class loop_type_sli : public loop_type_impl_singleinput_base
 {
 private:
 	input_decoder::ptr m_input;
-	input_loop_event_point_list m_points;
+	loop_event_point_list m_points;
 	pfc::array_staticsize_t<int> m_flags;
 	bool m_no_flags;
 	t_size m_crossfade_samples_half;
@@ -519,11 +523,11 @@ public:
 				if (*ptr == '#') {
 					// FIXME: original source checks only beginning-of-line...
 					while (*ptr && *ptr != '\n') ptr++;
-				} else if (isspace(*ptr)) {
-					while (isspace(*ptr)) ptr++;
+				} else if (isspace((unsigned char) *ptr)) {
+					while (isspace((unsigned char) *ptr)) ptr++;
 				} else if (pfc::stricmp_ascii(ptr, "Link") && !pfc::char_is_ascii_alpha(ptr[4])) {
 					ptr += 4;
-					while (isspace(*ptr)) ptr++;
+					while (isspace((unsigned char) *ptr)) ptr++;
 					if (!*ptr) return false;
 					sli_link_impl * link = new service_impl_t<sli_link_impl>();
 					if (!parse_sli_link(ptr, *link)) return false;
@@ -532,7 +536,7 @@ public:
 					m_points.add_item(link);
 				} else if (pfc::stricmp_ascii(ptr, "Label") && !pfc::char_is_ascii_alpha(ptr[5])) {
 					ptr += 5;
-					while (isspace(*ptr)) ptr++;
+					while (isspace((unsigned char) *ptr)) ptr++;
 					if (!*ptr) return false;
 					sli_label * label = new service_impl_t<sli_label>();
 					if (!parse_sli_label(ptr, *label)) return false;
@@ -546,7 +550,7 @@ public:
 		return false;		
 	}
 	virtual t_size get_crossfade_samples_half () const {return m_crossfade_samples_half;}
-	virtual bool open_path_internal(file::ptr p_filehint,const char * path,abort_callback & p_abort,bool p_from_redirect,bool p_skip_hints) {
+	virtual bool open_path_internal(file::ptr p_filehint,const char * path,t_input_open_reason p_reason,abort_callback & p_abort,bool p_from_redirect,bool p_skip_hints) {
 		open_path_helper(m_input, p_filehint, path, p_abort, p_from_redirect,p_skip_hints);
 		switch_input(m_input);
 		return true;
@@ -566,7 +570,7 @@ public:
 			m_flags.set_size_discard(SLI_FLAGS);
 			pfc::fill_array_t(m_flags, 0);
 		}
-		input_loop_type_impl_singlefile_base::open_decoding_internal(subsong, flags, p_abort);
+		loop_type_impl_singleinput_base::open_decoding_internal(subsong, flags, p_abort);
 	}
 	virtual void get_info(t_uint32 subsong, file_info & p_info,abort_callback & p_abort) {
 		get_input()->get_info(subsong, p_info, p_abort);
@@ -574,7 +578,7 @@ public:
 	}
 
 	virtual bool set_dynamic_info(file_info & p_out) {
-		input_loop_type_impl_base::set_dynamic_info(p_out);
+		loop_type_impl_base::set_dynamic_info(p_out);
 		if (!m_no_flags) {
 			pfc::string8 buf;
 			t_size num = m_flags.get_size();
@@ -586,7 +590,7 @@ public:
 	}
 
 	virtual bool reset_dynamic_info(file_info & p_out) {
-		return input_loop_type_impl_base::reset_dynamic_info(p_out) | p_out.info_remove("sli_flags");
+		return loop_type_impl_base::reset_dynamic_info(p_out) | p_out.info_remove("sli_flags");
 	}
 	bool check_condition(sli_link_impl & p_link) {
 		if (m_no_flags || p_link.condition == NULL || !p_link.condition->is_valid) 
@@ -606,33 +610,33 @@ public:
 			m_flags[flag] = formula.oper->calculate(m_flags[flag], value);
 		}
 	}
-	FB2K_MAKE_SERVICE_INTERFACE(input_loop_type_sli, input_loop_type);
+	FB2K_MAKE_SERVICE_INTERFACE(loop_type_sli, loop_type);
 };
 
-static input_loop_type_factory_t<input_loop_type_sli> g_input_loop_type_sli;
+static loop_type_factory_t<loop_type_sli> g_loop_type_sli;
 
 // {5EEA84FA-6765-4917-A800-791AE10809E1}
 FOOGUIDDECL const GUID sli_link::class_guid = 
 { 0x5eea84fa, 0x6765, 0x4917, { 0xa8, 0x0, 0x79, 0x1a, 0xe1, 0x8, 0x9, 0xe1 } };
 
 // {E697CCC0-0ABF-46bd-BA8F-B19096765368}
-FOOGUIDDECL const GUID input_loop_type_sli::class_guid = 
+FOOGUIDDECL const GUID loop_type_sli::class_guid = 
 { 0xe697ccc0, 0xabf, 0x46bd, { 0xba, 0x8f, 0xb1, 0x90, 0x96, 0x76, 0x53, 0x68 } };
 
-bool sli_link_impl::check(input_loop_type_base::ptr p_input) {
-	input_loop_type_sli::ptr p_input_special;
-	if (p_input->service_query_t<input_loop_type_sli>(p_input_special)) {
+bool sli_link_impl::check_condition(loop_type_base::ptr p_input) {
+	loop_type_sli::ptr p_input_special;
+	if (p_input->service_query_t<loop_type_sli>(p_input_special)) {
 		return p_input_special->check_condition(*this);
 	}
 	return true;
 }
 
-bool sli_link_impl::process(input_loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
+bool sli_link_impl::process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
 	// this event do not process on no_looping
-	if (p_input->get_no_looping() || !check(p_input)) return false;
+	if ((p_input->get_no_looping() && from >= to) || !check_condition(p_input)) return false;
 	t_size point = pfc::downcast_guarded<t_size>(from - p_start);
-	input_loop_type_sli::ptr p_input_special;
-	if (!smooth || !p_input->service_query_t<input_loop_type_sli>(p_input_special)) {
+	loop_type_sli::ptr p_input_special;
+	if (!smooth || !p_input->service_query_t<loop_type_sli>(p_input_special)) {
 		truncate_chunk(p_chunk,p_raw,point);
 		p_input->raw_seek(to, p_abort);
 		return true;
@@ -672,12 +676,12 @@ bool sli_link_impl::process(input_loop_type_base::ptr p_input, t_uint64 p_start,
 	return true;
 }
 
-bool sli_label::process(input_loop_type_base::ptr p_input, abort_callback & p_abort) {
+bool sli_label::process(loop_type_base::ptr p_input, abort_callback & p_abort) {
 	// this event do not process on no_looping
 	if (p_input->get_no_looping()) return false;
 	if (name[0] != ':') return false;
-	input_loop_type_sli::ptr p_input_special;
-	if (p_input->service_query_t<input_loop_type_sli>(p_input_special)) {
+	loop_type_sli::ptr p_input_special;
+	if (p_input->service_query_t<loop_type_sli>(p_input_special)) {
 		p_input_special->process_formula(name.get_ptr() + 1);
 	}
 	return false;
@@ -696,9 +700,9 @@ public:
 		text_file_loader::read(m_loopfile,p_abort,m_loopcontent,is_utf8);
 		pfc::string8 p_content_basepath;
 		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 4); // .sli
-		input_loop_type_entry::ptr ptr = new service_impl_t<input_loop_type_impl_t<input_loop_type_sli>>();
-		input_loop_type::ptr instance = new service_impl_t<input_loop_type_sli>();
-		if (instance->parse(m_loopcontent) && instance->open_path(NULL, p_content_basepath, p_abort, true, false)) {
+		loop_type_entry::ptr ptr = new service_impl_t<loop_type_impl_t<loop_type_sli>>();
+		loop_type::ptr instance = new service_impl_t<loop_type_sli>();
+		if (instance->parse(m_loopcontent) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
 			m_loopentry = ptr;
 			m_looptype = instance;
 		} else {
@@ -715,5 +719,5 @@ public:
 static input_singletrack_factory_ex_t<input_sli, input_entry::flag_redirect, input_decoder_v2> g_input_sli_factory;
 
 
-DECLARE_COMPONENT_VERSION("sli loop manager","0.1-dev",NULL);
+DECLARE_COMPONENT_VERSION("sli loop manager","0.2-dev",NULL);
 DECLARE_FILE_TYPE_EX("SLI", "SLI Loop Information File","SLI Loop Information Files");
