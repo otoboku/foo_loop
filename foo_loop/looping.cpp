@@ -125,8 +125,8 @@ public:
 			p_info.meta_get_count_by_name("LOOPLENGTH") != 1)
 			return false;
 		loop_event_point_simple * point = new service_impl_t<loop_event_point_simple>();
-		t_uint64 start = pfc::atoui64_ex(p_info.meta_get("LOOPSTART", 0), infinite_size);
-		t_uint64 length = pfc::atoui64_ex(p_info.meta_get("LOOPLENGTH", 0), infinite_size);
+		t_uint64 start = pfc::atoui64_ex(p_info.meta_get("LOOPSTART", 0), ~0);
+		t_uint64 length = pfc::atoui64_ex(p_info.meta_get("LOOPLENGTH", 0), ~0);
 		point->from = start + length;
 		point->to = start;
 		m_points.add_item(point);
@@ -145,8 +145,8 @@ class loop_event_point_twofiles_eof : public loop_event_point_baseimpl {
 public:
 	// situation determined on loop type
 	loop_event_point_twofiles_eof() : loop_event_point_baseimpl(on_looping | on_no_looping) {}
-	virtual t_uint64 get_position() const {return infinite64;}
-	virtual t_uint64 get_prepare_position() const {return infinite64;}
+	virtual t_uint64 get_position() const {return (t_uint64)-1;}
+	virtual t_uint64 get_prepare_position() const {return (t_uint64)-1;}
 	virtual void check() const {}
 	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {}
 	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
@@ -161,6 +161,7 @@ static struct {char * head_suffix; char * body_suffix; } const g_known_suffix_ta
 	{"_A", "_B"},
 	{"_head", "_body"},
 	{"_head", "_loop"},
+	{"a", "b"},
 };
 
 class loop_type_twofiles : public loop_type_impl_base

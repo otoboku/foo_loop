@@ -273,10 +273,10 @@ bool parse_sli_link(const char * & ptr,sli_link_impl &link) {
 			if (!parse_sli_entity(ptr, name, value)) return false;
 			if (!pfc::stricmp_ascii(name, "From")) {
 				if (!pfc::string_is_numeric(value)) return false;
-				link.from = pfc::atoui64_ex(value, strlen(value));
+				link.from = pfc::atoui64_ex(value, ~0);
 			} else if (!pfc::stricmp_ascii(name, "To")) {
 				if (!pfc::string_is_numeric(value)) return false;
-				link.to = pfc::atoui64_ex(value, strlen(value));
+				link.to = pfc::atoui64_ex(value, ~0);
 			} else if (!pfc::stricmp_ascii(name, "Smooth")) {
 				if (!pfc::stricmp_ascii(value, "True")) {
 					link.smooth = true;
@@ -340,7 +340,7 @@ bool parse_sli_label(const char * & ptr,sli_label &label) {
 			if (!parse_sli_entity(ptr, name, value)) return false;
 			if (!pfc::stricmp_ascii(name, "Position")) {
 				if (!pfc::string_is_numeric(value)) return false;
-				label.position = pfc::atoui64_ex(value, strlen(value));
+				label.position = pfc::atoui64_ex(value, ~0);
 			} else if (!pfc::stricmp_ascii(name, "Name")) {
 				label.name.set_string(value);
 			} else {
@@ -557,7 +557,7 @@ public:
 	}
 	virtual void open_decoding_internal(t_uint32 subsong, t_uint32 flags, abort_callback & p_abort) {
 		m_crossfade_samples_half = MulDiv_Size(get_sample_rate(), 25, 1000);
-		for (t_size i = m_points.get_count()-1; i != infinite_size; i--) {
+		for (t_size i = m_points.get_count()-1; i != (t_size)-1; i--) {
 			service_ptr_t<sli_link> link;
 			if (m_points[i]->service_query_t<sli_link>(link)) {
 				if (link->set_smooth_samples(m_crossfade_samples_half)) {
@@ -699,7 +699,7 @@ public:
 		bool is_utf8;
 		text_file_loader::read(m_loopfile,p_abort,m_loopcontent,is_utf8);
 		pfc::string8 p_content_basepath;
-		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 4); // .sli
+		p_content_basepath.set_string(p_path, pfc::strlen_t(p_path) - 4); // .sli
 		loop_type_entry::ptr ptr = new service_impl_t<loop_type_impl_t<loop_type_sli>>();
 		loop_type::ptr instance = new service_impl_t<loop_type_sli>();
 		if (instance->parse(m_loopcontent) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
@@ -719,5 +719,5 @@ public:
 static input_singletrack_factory_ex_t<input_sli, input_entry::flag_redirect, input_decoder_v2> g_input_sli_factory;
 
 
-DECLARE_COMPONENT_VERSION("sli loop manager","0.2-dev",NULL);
+DECLARE_COMPONENT_VERSION("sli loop manager","0.3-dev",NULL);
 DECLARE_FILE_TYPE_EX("SLI", "SLI Loop Information File","SLI Loop Information Files");

@@ -192,17 +192,17 @@ namespace loop_helper {
 
 	template<>
 	inline int loop_event_compare(const loop_event_point::ptr & p_item1, const loop_event_point::ptr & p_item2) {
-		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_position() : infinite64, p_item2.is_valid() ? p_item2->get_position() : infinite64);
+		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_position() : (t_uint64)-1, p_item2.is_valid() ? p_item2->get_position() : (t_uint64)-1);
 	}
 
 	template<>
 	inline int loop_event_compare(const t_uint64 & p_item1, const loop_event_point::ptr & p_item2) {
-		return pfc::compare_t(p_item1, p_item2.is_valid() ? p_item2->get_position() : infinite64);
+		return pfc::compare_t(p_item1, p_item2.is_valid() ? p_item2->get_position() : (t_uint64)-1);
 	}
 
 	template<>
 	inline int loop_event_compare(const loop_event_point::ptr & p_item1, const t_uint64 & p_item2) {
-		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_position() : infinite64, p_item2);
+		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_position() : (t_uint64)-1, p_item2);
 	}
 
 	template<typename t_item1, typename t_item2>
@@ -215,17 +215,17 @@ namespace loop_helper {
 
 	template<>
 	inline int loop_event_prepos_compare(const loop_event_point::ptr & p_item1, const loop_event_point::ptr & p_item2) {
-		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_prepare_position() : infinite64, p_item2.is_valid() ? p_item2->get_prepare_position() : infinite64);
+		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_prepare_position() : (t_uint64)-1, p_item2.is_valid() ? p_item2->get_prepare_position() : (t_uint64)-1);
 	}
 
 	template<>
 	inline int loop_event_prepos_compare(const t_uint64 & p_item1, const loop_event_point::ptr & p_item2) {
-		return pfc::compare_t(p_item1, p_item2.is_valid() ? p_item2->get_prepare_position() : infinite64);
+		return pfc::compare_t(p_item1, p_item2.is_valid() ? p_item2->get_prepare_position() : (t_uint64)-1);
 	}
 
 	template<>
 	inline int loop_event_prepos_compare(const loop_event_point::ptr & p_item1, const t_uint64 & p_item2) {
-		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_prepare_position() : infinite64, p_item2);
+		return pfc::compare_t(p_item1.is_valid() ? p_item1->get_prepare_position() : (t_uint64)-1, p_item2);
 	}
 
 	typedef pfc::list_t<loop_event_point::ptr, pfc::alloc_fast> loop_event_point_list;
@@ -282,7 +282,7 @@ namespace loop_helper {
 				return !(flags & on_looping);
 			}
 		}
-		virtual t_uint64 get_prepare_position() const {return infinite64;}
+		virtual t_uint64 get_prepare_position() const {return (t_uint64)-1;}
 
 		virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {}
 
@@ -438,7 +438,7 @@ namespace loop_helper {
 			if (n < nums) {
 				return get_points_by_prepos()[n]->get_prepare_position();
 			}
-			return infinite64;
+			return (t_uint64)-1;
 		}
 
 	protected:
@@ -526,13 +526,13 @@ namespace loop_helper {
 
 		virtual t_size get_nearest_point(t_uint64 pos) {
 			t_size nums = get_points_by_pos().get_count();
-			if (!nums) return infinite_size;
+			if (!nums) return (t_size)-1;
 			t_size index;
 			bsearch_points_by_pos(pos, index);
 			if (index < nums) {
 				return index;
 			} else {
-				return infinite_size;
+				return (t_size)-1;
 			}
 		}
 
@@ -566,7 +566,7 @@ namespace loop_helper {
 				}
 				n++;
 			}
-			m_nextpointpos = infinite64;
+			m_nextpointpos = (t_uint64)-1;
 		}
 
 		virtual void do_events(t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
@@ -593,7 +593,7 @@ namespace loop_helper {
 				}
 				n++;
 			}
-			m_nextpointpos = infinite64;
+			m_nextpointpos = (t_uint64)-1;
 		}
 
 		inline void user_seek(double seconds, abort_callback & p_abort) {
@@ -613,7 +613,7 @@ namespace loop_helper {
 			p_out.info_set(name, format_samples_ex(get_cur(), sample_rate));
 			name.reset();
 			name << get_info_prefix() << "next_event_pos";
-			p_out.info_set(name, (m_nextpointpos != infinite64) ? 
+			p_out.info_set(name, (m_nextpointpos != (t_uint64)-1) ? 
 				format_samples_ex(m_nextpointpos, sample_rate) : "(nothing or eof)");
 			return true;
 		}
@@ -648,9 +648,9 @@ namespace loop_helper {
 					}
 				} else {
 					if (cfg_loop_debug.get())
-						console_looping_debug_formatter() << "dispatch EOF (infinite64) event";
-					// try dispatching infinite64 event;
-					do_events(infinite64, p_abort);
+						console_looping_debug_formatter() << "dispatch EOF ((t_uint64)-1) event";
+					// try dispatching (t_uint64)-1 event;
+					do_events((t_uint64)-1, p_abort);
 					retries--;
 					continue;
 				}

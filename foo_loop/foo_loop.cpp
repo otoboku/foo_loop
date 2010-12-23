@@ -28,7 +28,7 @@ public:
 		pfc::string8 looptype;
 		parse_looptype(p_content, looptype);
 		pfc::string8 p_content_basepath;
-		p_content_basepath.set_string(p_path, pfc::strlen_max(p_path, infinite_size) - 5); // .loop
+		p_content_basepath.set_string(p_path, pfc::strlen_t(p_path) - 5); // .loop
 		service_enum_t<loop_type_entry> e;
 		loop_type_entry::ptr ptr;
 		while (e.next(ptr)) {
@@ -62,5 +62,5 @@ public:
 static input_factory_ex_t<input_loop, input_entry::flag_redirect, input_decoder_v2> g_input_loop_factory;
 
 
-DECLARE_COMPONENT_VERSION("standard looping handler","0.2-dev",NULL);
+DECLARE_COMPONENT_VERSION("standard looping handler","0.3-dev",NULL);
 DECLARE_FILE_TYPE_EX("LOOP","Audio Loop Information File","Audio Loop Information Files");
