@@ -169,7 +169,7 @@ bool parse_cs_hex(const char * & ptr,t_inttype & value) {
 	while(tmp = ptr[n], tmp && !isspace((unsigned char) tmp) && tmp != ',') n++;
 	if (n == 0) return false;
 	value = 0;
-	for (n--;n!=infinite_size;n--) {
+	for (n--;n!=(t_size)-1;n--) {
 		value = value << 4 | read_hex(*ptr++);
 	}
 	if (*ptr == ',') ptr++;
@@ -212,7 +212,7 @@ public:
 					if (!tmp) return false;
 					else n++;
 				end = n;
-				while(n!=infinite_size && isspace((unsigned char) ptr[n-1])) n--;
+				while(n!=(t_size)-1 && isspace((unsigned char) ptr[n-1])) n--;
 				m_path.set_string(ptr, n);
 				ptr+=end;
 				ptr++; // ,
@@ -220,7 +220,7 @@ public:
 				while(isspace((unsigned char) *ptr)) ptr++;
 				while(tmp = ptr[n], tmp && tmp != '\n') n++;
 				end = n;
-				while(n!=infinite_size && isspace((unsigned char) ptr[n-1])) n--;
+				while(n!=(t_size)-1 && isspace((unsigned char) ptr[n-1])) n--;
 				m_title.set_string(ptr, n);
 				ptr+=end;
 				if (*ptr == '\n') ptr++;
@@ -235,7 +235,7 @@ public:
 				while(isspace((unsigned char) *ptr)) ptr++;
 				while(tmp = ptr[n], tmp && tmp != '\n') n++;
 				end = n;
-				while(n!=infinite_size && isspace((unsigned char) ptr[n-1])) n--;
+				while(n!=(t_size)-1 && isspace((unsigned char) ptr[n-1])) n--;
 				ent.title.set_string(ptr, n);
 				m_list.add_item(ent);
 				ptr+=end;
