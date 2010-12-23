@@ -94,8 +94,9 @@ namespace loop_helper {
 }
 
 
-// some looping type class
+// some looping type classes
 static loop_type_factory_t<loop_type_none> g_loop_type_none;
+static loop_type_factory_t<loop_type_entire> g_loop_type_entire;
 
 class loop_type_loopstartlength : public loop_type_impl_singleinput_base
 {
@@ -107,6 +108,7 @@ public:
 	static const char * g_get_short_name() {return "loopstartlength";}
 	static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "loopstartlength");}
 	static bool g_is_explicit() {return false;}
+	static t_uint8 g_get_priority() {return 50;} // light weight, so probe earlier
 	virtual bool parse(const char * ptr) {
 		return true;
 	}
@@ -117,7 +119,7 @@ public:
 		} catch (exception_io_not_found) {
 			return false;
 		}
-		switch_input(m_input);
+		switch_input(m_input, path);
 		file_info_impl p_info;
 		get_input()->get_info(0, p_info, p_abort);
 		m_points.remove_all();
@@ -158,10 +160,14 @@ public:
 
 static struct {char * head_suffix; char * body_suffix; } const g_known_suffix_table[] =
 {
+	{"_a", "_b"},
 	{"_A", "_B"},
 	{"_head", "_body"},
+	{"_HEAD", "_BODY"},
 	{"_head", "_loop"},
+	{"_HEAD", "_LOOP"},
 	{"a", "b"},
+	{"A", "B"},
 };
 
 class loop_type_twofiles : public loop_type_impl_base
@@ -172,42 +178,21 @@ private:
 		pfc::string8 suffix;
 		pfc::string8 path;
 		t_uint64 samples;
-		bool samples_known;
 	};
 	loop_event_point_list m_points;
 	somefile * m_current;
 	somefile m_head, m_body;
-	pfc::string8 m_current_fileext;
-	bool m_current_changed;
 	bool m_autoprobe;
 
 	inline void switch_to(somefile & newfile) {
-		if (m_current != &newfile) {
-			m_current_changed = true;
-		}
 		m_current = &newfile;
-		switch_input(newfile.input);
-		m_current_fileext = pfc::string_filename_ext(newfile.path);
+		switch_input(newfile.input, newfile.path);
 	}
 
 protected:
 	void virtual open_decoding_internal(t_uint32 subsong, t_uint32 flags, abort_callback & p_abort) {
 		m_head.input->initialize(subsong, flags, p_abort);
 		m_body.input->initialize(subsong, flags, p_abort);		
-	}
-	virtual bool set_dynamic_info_track(file_info & p_out) {
-		bool ret = loop_type_impl_base::set_dynamic_info_track(p_out);
-		if (m_current_changed) {
-			p_out.info_set("loop_current_file", m_current_fileext);
-			return true;
-		} else {
-			return ret;
-		}
-	}
-	
-	virtual bool reset_dynamic_info_track(file_info & p_out) {
-		return loop_type_impl_base::reset_dynamic_info_track(p_out) |
-			p_out.info_remove("loop_current_file");
 	}
 public:
 	static const char * g_get_name() {return "Two Files (head and body)";}
@@ -253,14 +238,16 @@ public:
 			t_size baselen = base.get_length();
 			for(n=0;n<tabsize(g_known_suffix_table);n++)
 			{
+				const char *head_suffix = g_known_suffix_table[n].head_suffix;
+				const char *body_suffix = g_known_suffix_table[n].body_suffix;
 				work.truncate(baselen);
-				work << g_known_suffix_table[n].head_suffix << ext;
+				work << head_suffix << ext;
 				if (!filesystem::g_exists(work, p_abort)) continue;
 				work.truncate(baselen);
-				work << g_known_suffix_table[n].body_suffix << ext;
+				work << body_suffix << ext;
 				if (!filesystem::g_exists(work, p_abort)) continue;
-				m_head.suffix = g_known_suffix_table[n].head_suffix;
-				m_body.suffix = g_known_suffix_table[n].body_suffix;
+				m_head.suffix = head_suffix;
+				m_body.suffix = body_suffix;
 				found = true;
 				if (cfg_loop_debug.get())
 					console_looping_debug_formatter() << "twofiles: auto-probe: head-suffix=" << m_head.suffix << " body-suffix=" << m_body.suffix;
@@ -270,6 +257,7 @@ public:
 		}
 		m_head.path.reset();
 		m_head.path << base << m_head.suffix << ext;
+		filesystem::g_get_canonical_path(m_head.path, m_head.path);
 		try {
 			open_path_helper(m_head.input, NULL, m_head.path, p_abort, p_from_redirect, p_skip_hints);
 		} catch (exception_io_not_found) {
@@ -277,6 +265,7 @@ public:
 		}
 		m_body.path.reset();
 		m_body.path << base << m_body.suffix << ext;
+		filesystem::g_get_canonical_path(m_body.path, m_body.path);
 		try {
 			open_path_helper(m_body.input, NULL, m_body.path, p_abort, p_from_redirect, p_skip_hints);
 		} catch (exception_io_not_found) {
@@ -381,6 +370,7 @@ public:
 	static const char * g_get_short_name() {return "sampler";}
 	static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "sampler");}
 	static bool g_is_explicit() {return false;}
+	static t_uint8 g_get_priority() {return 150;} // heavy weight, so probe later
 	virtual bool parse(const char * ptr) {
 		return true;
 	}
@@ -392,13 +382,13 @@ public:
 				return false;
 			}
 		}
-		p_filehint->reopen(p_abort);
-		if (p_filehint->is_remote()) {
-			console::formatter() << "loop sampler: file must be local: \"" << file_path_display(path) << "\"";
+		if (!p_filehint->can_seek()) {
+			console::formatter() << "loop sampler: file must be seekable, ignores: \"" << file_path_display(path) << "\"";
 			return false;
 		}
 		pfc::string8 buf;
 		t_uint32 size;
+		p_filehint->seek(0, p_abort);
 		p_filehint->read_string_ex(buf, 4, p_abort); // chunkname: RIFF
 		if (!!pfc::strcmp_ex(buf, 4, "RIFF", 4))
 			return false;
@@ -468,7 +458,7 @@ public:
 		} catch (exception_io_not_found) {
 			return false;
 		}
-		switch_input(m_input);
+		switch_input(m_input, path);
 		switch_points(m_points);
 		return true;
 	}
@@ -478,18 +468,18 @@ public:
 	}
 };
 
-static loop_type_factory_t<loop_type_sampler> g_loop_type_sampler;
+static loop_type_factory_v2_t<loop_type_sampler> g_loop_type_sampler;
 
 #pragma region GUIDs
-// {C9E7AF50-FDF8-4a2f-99A6-8DE4D2B49D0C}
+//// {C9E7AF50-FDF8-4a2f-99A6-8DE4D2B49D0C}
 FOOGUIDDECL const GUID loop_type::class_guid = 
 { 0xc9e7af50, 0xfdf8, 0x4a2f, { 0x99, 0xa6, 0x8d, 0xe4, 0xd2, 0xb4, 0x9d, 0xc } };
 
-// {CA8E32C1-1A2D-4679-87AB-03292A97D890}
+//// {CA8E32C1-1A2D-4679-87AB-03292A97D890}
 FOOGUIDDECL const GUID loop_type_base::class_guid = 
 { 0xca8e32c1, 0x1a2d, 0x4679, { 0x87, 0xab, 0x3, 0x29, 0x2a, 0x97, 0xd8, 0x90 } };
 
-// {2910A6A6-A12B-414f-971B-90A65F79439B}
+//// {2910A6A6-A12B-414f-971B-90A65F79439B}
 FOOGUIDDECL const GUID loop_event_point::class_guid = 
 { 0x2910a6a6, 0xa12b, 0x414f, { 0x97, 0x1b, 0x90, 0xa6, 0x5f, 0x79, 0x43, 0x9b } };
 
@@ -500,6 +490,10 @@ FOOGUIDDECL const GUID loop_type_twofiles::class_guid =
 //// {566BCC79-7370-48c0-A7CB-5E47C4C17A86}
 FOOGUIDDECL const GUID loop_type_entry::class_guid = 
 { 0x566bcc79, 0x7370, 0x48c0, { 0xa7, 0xcb, 0x5e, 0x47, 0xc4, 0xc1, 0x7a, 0x86 } };
+
+//// {399E8435-5341-4549-8C9D-176979EC4300}
+FOOGUIDDECL const GUID loop_type_entry_v2::class_guid = 
+{ 0x399e8435, 0x5341, 0x4549, { 0x8c, 0x9d, 0x17, 0x69, 0x79, 0xec, 0x43, 0x0 } };
 
 #pragma endregion
 

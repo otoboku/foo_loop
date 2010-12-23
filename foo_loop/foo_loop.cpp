@@ -13,6 +13,19 @@ namespace {
 	}
 }
 
+struct loop_type_prioritized_entry {
+	t_uint8 priority;
+	loop_type_entry::ptr ptr;
+};
+
+template<typename t_item1, typename t_item2>
+inline int looptype_priority_compare(const t_item1 & p_item1, const t_item2 & p_item2);
+
+template<>
+inline int looptype_priority_compare(const loop_type_prioritized_entry & p_item1, const loop_type_prioritized_entry & p_item2) {
+	return pfc::compare_t(p_item1.priority, p_item2.priority);
+}
+
 class input_loop : public input_loop_base
 {
 public:
@@ -31,8 +44,26 @@ public:
 		p_content_basepath.set_string(p_path, pfc::strlen_t(p_path) - 5); // .loop
 		service_enum_t<loop_type_entry> e;
 		loop_type_entry::ptr ptr;
+		pfc::list_t<loop_type_prioritized_entry> ents;
+		bool type_specified = !looptype.is_empty();
 		while (e.next(ptr)) {
-			if ((looptype.is_empty() && !ptr->is_explicit()) || ptr->is_our_type(looptype)) {
+			// if type specified, use type only. otherwise try auto-probing
+			if (type_specified ? ptr->is_our_type(looptype) : !ptr->is_explicit()) {
+				loop_type_prioritized_entry ent = {100, ptr};
+				loop_type_entry_v2::ptr v2ptr;
+				if (ptr->service_query_t<loop_type_entry_v2>(v2ptr)) {
+					ent.priority = v2ptr->get_priority();
+					v2ptr.release();
+				}
+				ents.add_item(ent);
+			}
+		}
+		if (ents.get_count() != 0) {
+			pfc::array_staticsize_t<t_size> m_perm_by_prio(ents.get_count());
+			order_helper::g_fill(m_perm_by_prio);
+			ents.sort_get_permutation_t(looptype_priority_compare<loop_type_prioritized_entry, loop_type_prioritized_entry>, m_perm_by_prio.get_ptr());
+			for (t_size i=0; i<m_perm_by_prio.get_size(); ++i) {
+				ptr = ents.get_item(m_perm_by_prio[i]).ptr;
 				loop_type::ptr instance = ptr->instantiate();
 				if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
 					m_loopentry = ptr;
@@ -40,17 +71,18 @@ public:
 					break;
 				}
 			}
+			ents.remove_all();
 		}
 
 		if (m_looptype.is_empty()) {
-			console::formatter() << "loop parsing failed, resume to normal playback: \"" << file_path_display(p_path) << "\"";
-			loop_type_entry::ptr ptr = new service_impl_t<loop_type_impl_t<loop_type_none>>();
-			loop_type::ptr instance = new service_impl_t<loop_type_none>();
+			//console::formatter() << "loop parsing failed, resume to normal playback: \"" << file_path_display(p_path) << "\"";
+			loop_type_entry::ptr ptr = new service_impl_t<loop_type_impl_t<loop_type_entire>>();
+			loop_type::ptr instance = new service_impl_t<loop_type_entire>();
 			if (instance->parse(p_content) && instance->open_path(NULL, p_content_basepath, p_reason, p_abort, true, false)) {
 				m_loopentry = ptr;
 				m_looptype = instance;
 			}
-			PFC_ASSERT(m_looptype.is_valid()); // parse error on input_loop_type_none !?
+			PFC_ASSERT(m_looptype.is_valid()); // parse error on input_loop_type_entire !?
 		}
 	}
 
@@ -62,5 +94,5 @@ public:
 static input_factory_ex_t<input_loop, input_entry::flag_redirect, input_decoder_v2> g_input_loop_factory;
 
 
-DECLARE_COMPONENT_VERSION("standard looping handler","0.3-dev",NULL);
+DECLARE_COMPONENT_VERSION("Standard Loop Information Handler","0.4 alpha","Standard Looping Handler.\nThis includes .loop and .sli support.");
 DECLARE_FILE_TYPE_EX("LOOP","Audio Loop Information File","Audio Loop Information Files");

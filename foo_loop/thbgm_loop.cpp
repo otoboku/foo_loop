@@ -254,7 +254,7 @@ public:
 		ptr->set_title(m_title);
 		ptr->open(p_filehint,p_path,p_reason,p_abort);
 		m_input = ptr;
-		switch_input(m_input);
+		switch_input(m_input, p_path);
 		return true;
 	}
 	virtual void open_decoding_internal(t_uint32 subsong, t_uint32 flags, abort_callback & p_abort) {
