@@ -24,7 +24,10 @@ namespace pfc {
 		string() : m_content(rcnew_t<__stringEmpty>()) {}
 		string(const char * p_source) : m_content(rcnew_t<string8>(p_source)) {}
 		string(const char * p_source, t_size p_sourceLen) : m_content(rcnew_t<pfc::string8>(p_source,p_sourceLen)) {}
+		string(char * p_source) : m_content(rcnew_t<string8>(p_source)) {}
+		string(char * p_source, t_size p_sourceLen) : m_content(rcnew_t<pfc::string8>(p_source,p_sourceLen)) {}
 		string(t_data const & p_source) : m_content(p_source) {}
+		string(string_part_ref source) : m_content(rcnew_t<pfc::string8>(source)) {}
 		template<typename TSource> string(const TSource & p_source);
 
 		string const & toString() const {return *this;}
@@ -123,36 +126,60 @@ namespace pfc {
 		static bool isNonTextChar(char c) {return c >= 0 && c < 32;}
 
 		char operator[](t_size p_index) const {
-			PFC_ASSERT(p_index < length());
+			PFC_ASSERT(p_index <= length());
 			return ptr()[p_index];
 		}
 		bool isEmpty() const {return length() == 0;}
 
-		class comparatorCaseSensitive {
+		class _comparatorCommon {
+		protected:
+			template<typename T> static const char * myStringToPtr(const T& val) {return stringToPtr(val);}
+			static const char * myStringToPtr(string_part_ref) {
+				PFC_ASSERT(!"Should never get here"); throw pfc::exception_invalid_params();
+			}
+		};
+
+		class comparatorCaseSensitive : private _comparatorCommon {
 		public:
 			template<typename T1,typename T2>
 			static int compare(T1 const& v1, T2 const& v2) {
-				return strcmp(stringToPtr(v1),stringToPtr(v2));
+				if (is_same_type<T1, string_part_ref>::value || is_same_type<T2, string_part_ref>::value) {
+					return compare_ex(stringToRef(v1), stringToRef(v2));
+				} else {
+					return strcmp(myStringToPtr(v1),myStringToPtr(v2));
+				}
+			}
+			static int compare_ex(string_part_ref v1, string_part_ref v2) {
+				return strcmp_ex(v1.m_ptr, v1.m_len, v2.m_ptr, v2.m_len);
 			}
 			static int compare_ex(const char * v1, t_size l1, const char * v2, t_size l2) {
 				return strcmp_ex(v1, l1, v2, l2);
 			}
-
 		};
-		class comparatorCaseInsensitive {
+		class comparatorCaseInsensitive : private _comparatorCommon {
 		public:
 			template<typename T1,typename T2>
 			static int compare(T1 const& v1, T2 const& v2) {
-				return stringCompareCaseInsensitive(stringToPtr(v1),stringToPtr(v2));
+				if (is_same_type<T1, string_part_ref>::value || is_same_type<T2, string_part_ref>::value) {
+					return stringCompareCaseInsensitiveEx(stringToRef(v1), stringToRef(v2));
+				} else {
+					return stringCompareCaseInsensitive(myStringToPtr(v1),myStringToPtr(v2));
+				}
 			}
 		};
-		class comparatorCaseInsensitiveASCII {
+		class comparatorCaseInsensitiveASCII : private _comparatorCommon {
 		public:
 			template<typename T1,typename T2>
 			static int compare(T1 const& v1, T2 const& v2) {
-				return stricmp_ascii(stringToPtr(v1),stringToPtr(v2));
+				if (is_same_type<T1, string_part_ref>::value || is_same_type<T2, string_part_ref>::value) {
+					return compare_ex(stringToRef(v1), stringToRef(v2));
+				} else {
+					return stricmp_ascii(myStringToPtr(v1),myStringToPtr(v2));
+				}
 			}
-
+			static int compare_ex(string_part_ref v1, string_part_ref v2) {
+				return stricmp_ascii_ex(v1.m_ptr, v1.m_len, v2.m_ptr, v2.m_len);
+			}
 			static int compare_ex(const char * v1, t_size l1, const char * v2, t_size l2) {
 				return stricmp_ascii_ex(v1, l1, v2, l2);
 			}
@@ -217,4 +244,6 @@ namespace pfc {
 		}
 		return acc;
 	}
+
+	template<> class traits_t<string> : public traits_t<string::t_data> {};
 }

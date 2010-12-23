@@ -1,4 +1,5 @@
-void WIN32_OP_FAIL();
+PFC_NORETURN PFC_NOINLINE void WIN32_OP_FAIL();
+
 #ifdef _DEBUG
 void WIN32_OP_D_FAIL(const wchar_t * _Message, const wchar_t *_File, unsigned _Line);
 #endif
@@ -149,13 +150,13 @@ static bool SetClipboardDataBlock(UINT p_format,const void * p_block,t_size p_bl
 
 template<typename t_array>
 static bool SetClipboardDataBlock(UINT p_format,const t_array & p_array) {
-	pfc::static_assert<sizeof(p_array[0]) == 1>();
+	PFC_STATIC_ASSERT( sizeof(p_array[0]) == 1 );
 	return SetClipboardDataBlock(p_format,p_array.get_ptr(),p_array.get_size());
 }
 
 template<typename t_array>
 static bool GetClipboardDataBlock(UINT p_format,t_array & p_array) {
-	pfc::static_assert<sizeof(p_array[0]) == 1>();
+	PFC_STATIC_ASSERT( sizeof(p_array[0]) == 1 );
 	if (OpenClipboard(NULL)) {
 		HANDLE handle = GetClipboardData(p_format);
 		if (handle == NULL) {
@@ -198,6 +199,9 @@ class CoInitializeScope {
 public:
 	CoInitializeScope() {
 		if (FAILED(CoInitialize(NULL))) throw pfc::exception("CoInitialize() failed");
+	}
+	CoInitializeScope(DWORD params) {
+		if (FAILED(CoInitializeEx(NULL, params))) throw pfc::exception("CoInitialize() failed");
 	}
 	~CoInitializeScope() {
 		CoUninitialize();
@@ -397,3 +401,10 @@ private:
 	PFC_CLASS_NOT_COPYABLE_EX(CModelessDialogEntry);
 	HWND m_wnd;
 };
+
+void GetOSVersionString(pfc::string_base & out);
+void GetOSVersionStringAppend(pfc::string_base & out);
+
+
+
+void SetDefaultMenuItem(HMENU p_menu,unsigned p_id);

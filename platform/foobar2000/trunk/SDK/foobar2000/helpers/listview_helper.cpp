@@ -6,7 +6,7 @@ namespace listview_helper {
 
 	unsigned insert_item(HWND p_listview,unsigned p_index,const char * p_name,LPARAM p_param)
 	{
-		if (p_index == infinite) p_index = ListView_GetItemCount(p_listview);
+		if (p_index == ~0) p_index = ListView_GetItemCount(p_listview);
 		LVITEM item = {};
 
 		pfc::stringcvt::string_os_from_utf8 os_string_temp(p_name);
@@ -17,7 +17,7 @@ namespace listview_helper {
 		item.pszText = const_cast<TCHAR*>(os_string_temp.get_ptr());
 		
 		LRESULT ret = uSendMessage(p_listview,LVM_INSERTITEM,0,(LPARAM)&item);
-		if (ret < 0) return infinite;
+		if (ret < 0) return ~0;
 		else return (unsigned) ret;
 	}
 
@@ -37,15 +37,15 @@ namespace listview_helper {
 		data.pszText = const_cast<TCHAR*>(os_string_temp.get_ptr());
 		
 		LRESULT ret = uSendMessage(p_listview,LVM_INSERTCOLUMN,p_index,(LPARAM)&data);
-		if (ret < 0) return infinite;
+		if (ret < 0) return ~0;
 		else return (unsigned) ret;
 	}
 
 	void get_item_text(HWND p_listview,unsigned p_index,unsigned p_column,pfc::string_base & p_out) {
-		enum {buffer_length = 4096};
-		TCHAR buffer[buffer_length];
-		ListView_GetItemText(p_listview,p_index,p_column,buffer,buffer_length);
-		p_out = pfc::stringcvt::string_utf8_from_os(buffer,buffer_length);
+		enum {buffer_length = 1024*64};
+		pfc::array_t<TCHAR> buffer; buffer.set_size(buffer_length);
+		ListView_GetItemText(p_listview,p_index,p_column,buffer.get_ptr(),buffer_length);
+		p_out = pfc::stringcvt::string_utf8_from_os(buffer.get_ptr(),buffer_length);
 	}
 
 	bool set_item_text(HWND p_listview,unsigned p_index,unsigned p_column,const char * p_name)
@@ -105,6 +105,7 @@ void ListView_GetContextMenuPoint(HWND p_list,LPARAM p_coords,POINT & p_point,in
 	if ((DWORD)p_coords == (DWORD)(-1)) {
 		int firstsel = ListView_GetFirstSelection(p_list);
 		if (firstsel >= 0) {
+			ListView_EnsureVisible(p_list, firstsel, FALSE);
 			RECT rect;
 			WIN32_OP_D( ListView_GetItemRect(p_list,firstsel,&rect,LVIR_BOUNDS) );
 			p_point.x = (rect.left + rect.right) / 2;

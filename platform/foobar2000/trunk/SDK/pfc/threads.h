@@ -9,6 +9,19 @@ namespace pfc {
 		PFC_DECLARE_EXCEPTION(exception_creation, exception, "Could not create thread");
 		thread() : m_thread(INVALID_HANDLE_VALUE) {}
 		~thread() {PFC_ASSERT(!isActive()); waitTillDone();}
+		void startWithPriority(int priority) {
+			close();
+			HANDLE thread;
+			thread = CreateThread(NULL,0,g_entry,reinterpret_cast<void*>(this),CREATE_SUSPENDED,NULL);
+			if (thread == NULL) throw exception_creation();
+			SetThreadPriority(thread, priority);
+			ResumeThread(thread);
+			m_thread = thread;
+		}
+		void setPriority(int priority) {
+			PFC_ASSERT(isActive());
+			SetThreadPriority(m_thread, priority);
+		}
 		void start() {
 			close();
 			HANDLE thread;

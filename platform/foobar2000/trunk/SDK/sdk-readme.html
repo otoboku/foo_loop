@@ -1,7 +1,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en"
  lang="en" dir="ltr">
 <head>
-  <title>foobar2000 0.9.5 SDK readme</title>
+  <title>foobar2000 1.0 SDK readme</title>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
   <meta name="generator" content="DokuWiki Release 2007-06-26b" />
   <link rel="stylesheet" type="text/css" href="sdk-readme.css" />
@@ -13,7 +13,7 @@
 <div id="toc__inside">
 
 <ul class="toc">
-<li class="level1"><div class="li"><span class="li"><a href="#foobar2000_0.9.5_sdk_readme" class="toc">foobar2000 0.9.5 SDK readme</a></span></div>
+<li class="level1"><div class="li"><span class="li"><a href="#foobar2000_1.0_sdk_readme" class="toc">foobar2000 1.0 SDK readme</a></span></div>
 <ul class="toc">
 <li class="level2"><div class="li"><span class="li"><a href="#compatibility" class="toc">Compatibility</a></span></div></li>
 <li class="level2"><div class="li"><span class="li"><a href="#basic_usage" class="toc">Basic usage</a></span></div></li>
@@ -39,35 +39,20 @@
 
 
 
-<h1><a name="foobar2000_0.9.5_sdk_readme" id="foobar2000_0.9.5_sdk_readme">foobar2000 0.9.5 SDK readme</a></h1>
+<h1><a name="foobar2000_1.0_sdk_readme" id="foobar2000_1.0_sdk_readme">foobar2000 1.0 SDK readme</a></h1>
 <div class="level1">
 
 </div>
-<!-- SECTION "foobar2000 0.9.5 SDK readme" [1-47] -->
+<!-- SECTION "foobar2000 1.0 SDK readme" [1-42] -->
 <h2><a name="compatibility" id="compatibility">Compatibility</a></h2>
 <div class="level2">
 
 <p>
- Components built with this <acronym title="Software Development Kit">SDK</acronym> are compatible with foobar2000 0.9.5. They are not compatible with any earlier versions (will fail to load), and not guaranteed to be compatible with any future versions, though upcoming 0.9.X releases will aim to maintain compatibility as far as possible without crippling newly added functionality.
+ Components built with this <acronym title="Software Development Kit">SDK</acronym> are compatible with foobar2000 1.0. They are not compatible with any earlier versions (will fail to load), and not guaranteed to be compatible with any future versions, though upcoming releases will aim to maintain compatibility as far as possible without crippling newly added functionality.
 </p>
 
 </div>
-
-<h4><a name="new_features_provided_by_incremental_updates" id="new_features_provided_by_incremental_updates">New features provided by incremental updates</a></h4>
-<div class="level4">
-
-<p>
-Some of non-critical functionality provided through this <acronym title="Software Development Kit">SDK</acronym> (flagged as such) was introduced in one of incremental 0.9.5.X updates and will not function when used with foobar2000 versions older than specified in the description of specific <acronym title="Application Programming Interface">API</acronym>. For an example: 
-</p>
-<pre class="code c++">try <span class="br0">&#123;</span>
-  <span class="co1">//Attempting to use an API that was introduced in 0.9.5.1:</span>
-  static_api_ptr_t&lt;app_close_blocking_task_manager&gt;<span class="br0">&#40;</span><span class="br0">&#41;</span>-&gt;register_task<span class="br0">&#40;</span>mytask<span class="br0">&#41;</span>;
-<span class="br0">&#125;</span> catch<span class="br0">&#40;</span>exception_service_not_found<span class="br0">&#41;</span> <span class="br0">&#123;</span>
-  <span class="co1">//User's foobar2000 is older than 0.9.5.1.</span>
-  <span class="co1">//Possible responses: ignore and disable affected functionality, complain to user about outdated install, etc.</span>
-<span class="br0">&#125;</span></pre>
-</div>
-<!-- SECTION "Compatibility" [48-1086] -->
+<!-- SECTION "Compatibility" [43-394] -->
 <h2><a name="basic_usage" id="basic_usage">Basic usage</a></h2>
 <div class="level2">
 
@@ -112,7 +97,7 @@ Component code should include the following header files:
 </ul>
 
 </div>
-<!-- SECTION "Basic usage" [1087-2914] -->
+<!-- SECTION "Basic usage" [395-2222] -->
 <h2><a name="structure_of_a_component" id="structure_of_a_component">Structure of a component</a></h2>
 <div class="level2">
 
@@ -121,7 +106,7 @@ Component code should include the following header files:
 </p>
 
 </div>
-<!-- SECTION "Structure of a component" [2915-3081] -->
+<!-- SECTION "Structure of a component" [2223-2389] -->
 <h3><a name="services" id="services">Services</a></h3>
 <div class="level3">
 
@@ -138,7 +123,7 @@ Each service object provides reference counter features and (<code>service_add_r
 </p>
 
 </div>
-<!-- SECTION "Services" [3082-5347] -->
+<!-- SECTION "Services" [2390-4655] -->
 <h3><a name="entrypoint_services" id="entrypoint_services">Entrypoint services</a></h3>
 <div class="level3">
 
@@ -180,7 +165,7 @@ A typical entrypoint service implementation looks like this:
 <span class="br0">&#125;</span>;
 <span class="kw4">static</span> service_factory_single_t&lt;myservice_impl&gt; g_myservice_impl_factory;</pre>
 </div>
-<!-- SECTION "Entrypoint services" [5348-7819] -->
+<!-- SECTION "Entrypoint services" [4656-7127] -->
 <h3><a name="service_extensions" id="service_extensions">Service extensions</a></h3>
 <div class="level3">
 
@@ -198,7 +183,7 @@ service_ptr_t&lt;myservice_v2&gt; ptr_ex;
 <span class="kw1">if</span> <span class="br0">&#40;</span>ptr-&gt;service_query_t<span class="br0">&#40;</span>ptr_ex<span class="br0">&#41;</span><span class="br0">&#41;</span> <span class="br0">&#123;</span> <span class="coMULTI">/* ptr_ex is a valid pointer to myservice_v2 interface of our myservice instance */</span> <span class="br0">&#40;</span>...<span class="br0">&#41;</span> <span class="br0">&#125;</span>
 <span class="kw1">else</span> <span class="br0">&#123;</span><span class="coMULTI">/* this myservice implementation does not implement myservice_v2 */</span> <span class="br0">&#40;</span>...<span class="br0">&#41;</span> <span class="br0">&#125;</span></pre>
 </div>
-<!-- SECTION "Service extensions" [7820-8759] -->
+<!-- SECTION "Service extensions" [7128-8067] -->
 <h3><a name="autopointer_template_use" id="autopointer_template_use">Autopointer template use</a></h3>
 <div class="level3">
 
@@ -207,7 +192,7 @@ service_ptr_t&lt;myservice_v2&gt; ptr_ex;
 </p>
 
 </div>
-<!-- SECTION "Autopointer template use" [8760-9264] -->
+<!-- SECTION "Autopointer template use" [8068-8572] -->
 <h3><a name="exception_use" id="exception_use">Exception use</a></h3>
 <div class="level3">
 
@@ -224,7 +209,7 @@ Implementations of global callback services such as <code>playlist_callback</cod
 </p>
 
 </div>
-<!-- SECTION "Exception use" [9265-10282] -->
+<!-- SECTION "Exception use" [8573-9590] -->
 <h3><a name="storing_configuration" id="storing_configuration">Storing configuration</a></h3>
 <div class="level3">
 
@@ -241,7 +226,7 @@ Note that <code>cfg_var</code> objects can only be instantiated statically (eith
 </p>
 
 </div>
-<!-- SECTION "Storing configuration" [10283-11218] -->
+<!-- SECTION "Storing configuration" [9591-10526] -->
 <h3><a name="use_of_global_callback_services" id="use_of_global_callback_services">Use of global callback services</a></h3>
 <div class="level3">
 
@@ -273,16 +258,25 @@ Note that <code>cfg_var</code> objects can only be instantiated statically (eith
 All of global callbacks operate only within main app thread, allowing easy cooperation with windows <acronym title="Graphical User Interface">GUI</acronym> - for an example, you perform playlist view window repainting directly from your playlist_callback implementation.
 </p>
 
+</div>
+
+<h4><a name="global_callback_recursion_issues" id="global_callback_recursion_issues">Global callback recursion issues</a></h4>
+<div class="level4">
+
 <p>
-There are restrictions on things that are legal to call from within global callbacks. For an example, you can&#039;t modify playlist from inside a playlist callback, because there are other registered callbacks tracking playlist changes that haven&#039;t been notified about the change being currently processed yet.
+There are restrictions on things that are legal to call from within global callbacks. For an example, you can&#039;t modify a playlist from inside a playlist callback, because there are other registered callbacks tracking playlist changes that haven&#039;t been notified about the change being currently processed yet.
 </p>
 
 <p>
-<strong>IMPORTANT</strong>: You must not enter modal message loops from inside global callbacks, as those allow <strong>any</strong> unrelated code (queued messages, user input, etc.) to be executed, without being aware that a global callback is being processed. Certain global <acronym title="Application Programming Interface">API</acronym> methods such as metadb_io::load_info_multi or threaded_process::run_modal enter modal loops when called. In other words, calling tag read/write operations from within one of global callbacks is illegal and will lead to issues. Use main_thread_callback service to avoid this problem and delay execution of problematic code.
+You must not enter modal message loops from inside global callbacks, as those allow any unrelated code (queued messages, user input, etc.) to be executed, without being aware that a global callback is being processed. Certain global <acronym title="Application Programming Interface">API</acronym> methods such as metadb_io::load_info_multi or threaded_process::run_modal enter modal loops when called. Use main_thread_callback service to avoid this problem and delay execution of problematic code.
+</p>
+
+<p>
+You should also avoid firing a cross-thread SendMessage() inside global callbacks as well as performing any operations that dispatch global callbacks when handling a message that was sent through a cross-thread SendMessage(). Doing so may result in rare unwanted recursions - SendMessage() call will block the calling thread and immediately process any incoming cross-thread SendMessage() messages. If you&#039;re handling a cross-thread SendMessage() and need to perform such operation, delay it using PostMessage() or main_thread_callback.
 </p>
 
 </div>
-<!-- SECTION "Use of global callback services" [11219-13201] -->
+<!-- SECTION "Use of global callback services" [10527-12948] -->
 <h2><a name="service_class_design_guidelines_advanced" id="service_class_design_guidelines_advanced">Service class design guidelines (advanced)</a></h2>
 <div class="level2">
 
@@ -291,7 +285,7 @@ There are restrictions on things that are legal to call from within global callb
 </p>
 
 </div>
-<!-- SECTION "Service class design guidelines (advanced)" [13202-13538] -->
+<!-- SECTION "Service class design guidelines (advanced)" [12949-13285] -->
 <h3><a name="cross-dll_safety" id="cross-dll_safety">Cross-DLL safety</a></h3>
 <div class="level3">
 
@@ -300,7 +294,7 @@ There are restrictions on things that are legal to call from within global callb
 </p>
 
 </div>
-<!-- SECTION "Cross-DLL safety" [13539-14366] -->
+<!-- SECTION "Cross-DLL safety" [13286-14113] -->
 <h3><a name="entrypoint_service_efficiency" id="entrypoint_service_efficiency">Entrypoint service efficiency</a></h3>
 <div class="level3">
 
@@ -367,6 +361,6 @@ service_ptr_t&lt;myservice_instance&gt; findservice<span class="br0">&#40;</span
 	throw exception_io_data<span class="br0">&#40;</span><span class="br0">&#41;</span>;
 <span class="br0">&#125;</span></pre>
 </div>
-<!-- SECTION "Entrypoint service efficiency" [14367-] --></div>
+<!-- SECTION "Entrypoint service efficiency" [14114-] --></div>
 </body>
 </html>

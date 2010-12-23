@@ -13,6 +13,7 @@ namespace InPlaceEdit {
 		virtual bool TableEdit_IsColumnEditable(t_size subItem) const {return true;}
 		virtual void TableEdit_GetColumnOrder(t_size * out, t_size count) const {order_helper::g_fill(out,count);}
 		virtual t_uint32 TableEdit_GetEditFlags(t_size item, t_size subItem) const {return 0;}
+		virtual bool TableEdit_GetAutoComplete(t_size item, t_size subItem, pfc::com_ptr_t<IUnknown> & out) {return false;}
 		void TableEdit_Start(t_size item, t_size subItem);
 		void TableEdit_Abort(bool forwardContent);
 		bool TableEdit_IsActive() const {return have_task(KTaskID);}

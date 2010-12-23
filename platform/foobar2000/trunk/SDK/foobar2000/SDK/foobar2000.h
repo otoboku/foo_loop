@@ -7,6 +7,9 @@
 #error Only UNICODE environment supported.
 #endif
 
+// #define FOOBAR2000_TARGET_VERSION 75 // 0.9.6
+#define FOOBAR2000_TARGET_VERSION 76 // 1.0
+
 #include "../../pfc/pfc.h"
 
 #include "../shared/shared.h"
@@ -39,6 +42,7 @@ typedef const char * pcchar;
 #include "playable_location.h"
 #include "file_info.h"
 #include "file_info_impl.h"
+#include "hasher_md5.h"
 #include "metadb_handle.h"
 #include "metadb.h"
 #include "console.h"
@@ -75,7 +79,6 @@ typedef const char * pcchar;
 #include "config_object.h"
 #include "config_object_impl.h"
 #include "threaded_process.h"
-#include "hasher_md5.h"
 #include "message_loop.h"
 #include "input_file_type.h"
 #include "chapterizer.h"
@@ -87,9 +90,16 @@ typedef const char * pcchar;
 
 #include "album_art.h"
 #include "icon_remap.h"
+#include "ui_element.h"
 #include "ole_interaction.h"
 #include "search_tools.h"
 #include "autoplaylist.h"
 #include "replaygain_scanner.h"
+#include "ui_edit_context.h"
+
+#include "system_time_keeper.h"
+#include "playback_stream_capture.h"
+#include "http_client.h"
+#include "exceptions.h"
 
 #endif //_FOOBAR2000_H_

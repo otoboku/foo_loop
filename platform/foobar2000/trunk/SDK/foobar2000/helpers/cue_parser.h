@@ -15,9 +15,9 @@ namespace file_info_record_helper {
 	public:
 		__file_info_record__meta__enumerator(file_info & p_out) : m_out(p_out) {}
 		template<typename t_value> void operator() (const char * p_name,const t_value & p_value) {
-			t_size index = infinite;
+			t_size index = ~0;
 			for(typename t_value::const_iterator iter = p_value.first(); iter.is_valid(); ++iter) {
-				if (index == infinite) index = m_out.__meta_add_unsafe(p_name,*iter);
+				if (index == ~0) index = m_out.__meta_add_unsafe(p_name,*iter);
 				else m_out.meta_add_value(index,*iter);
 			}
 		}
@@ -341,7 +341,7 @@ namespace cue_parser
 				t_base instance;
 				m_file->reopen(p_abort);
 				instance.open(m_file,m_path,input_open_info_write,p_abort);
-				instance.retag(pfc::safe_cast<const file_info&>(info),p_abort);
+				instance.retag(pfc::implicit_cast<const file_info&>(info),p_abort);
 				info.reset();
 				instance.get_info(info,p_abort);
 				m_meta.set_tag(info);
@@ -366,14 +366,11 @@ namespace cue_parser
 	class chapterizer_impl_t : public chapterizer
 	{
 	public:
-		bool is_our_file(const char * p_path,abort_callback & p_abort) 
-		{
-			return I::g_is_our_path(p_path,pfc::string_extension(p_path));
+		bool is_our_path(const char * p_path) {
+			return I::g_is_our_path(p_path, pfc::string_extension(p_path));
 		}
 
 		void set_chapters(const char * p_path,chapter_list const & p_list,abort_callback & p_abort) {
-			
-			
 			input_wrapper_cue_t<I> instance;
 			instance.open(0,p_path,input_open_info_write,p_abort);
 
@@ -387,8 +384,8 @@ namespace cue_parser
 				{
 					cue_creator::t_entry_list entries;
 					t_size n, m = p_list.get_chapter_count();
-									
-					double offset_acc = 0;
+					const double pregap = p_list.get_pregap();
+					double offset_acc = pregap;
 					for(n=0;n<m;n++)
 					{
 						cue_creator::t_entry_list::iterator entry;
@@ -397,6 +394,7 @@ namespace cue_parser
 						entry->m_file = "CDImage.wav";
 						entry->m_track_number = (unsigned)(n+1);
 						entry->m_index_list.from_infos(entry->m_infos,offset_acc);
+						if (n == 0) entry->m_index_list.m_positions[0] = 0;
 						offset_acc += entry->m_infos.get_length();
 					}
 					cue_creator::create(cuesheet,entries);
@@ -417,10 +415,7 @@ namespace cue_parser
 		void get_chapters(const char * p_path,chapter_list & p_list,abort_callback & p_abort) {
 
 			input_wrapper_cue_t<I> instance;
-
-
 			instance.open(0,p_path,input_open_info_read,p_abort);
-
 			const t_uint32 total = instance.get_subsong_count();
 
 			p_list.set_chapter_count(total);
@@ -430,6 +425,10 @@ namespace cue_parser
 				p_list.set_info(walk,info);
 			}
 		}
+
+		bool supports_pregaps() {
+			return true;
+		}
 	};
 
 };
@@ -437,9 +436,9 @@ namespace cue_parser
 //! Wrapper template for generating embedded cuesheet enabled inputs.
 //! t_input_impl is a singletrack input implementation (see input_singletrack_impl for method declarations).
 //! To declare an embedded cuesheet enabled input, change your input declaration from input_singletrack_factory_t<myinput> to input_cuesheet_factory_t<myinput>.
-template<typename t_input_impl>
+template<typename t_input_impl, unsigned t_flags = 0>
 class input_cuesheet_factory_t {
 public:
-	input_factory_ex_t<cue_parser::input_wrapper_cue_t<t_input_impl>,0,input_decoder_v2> m_input_factory;
+	input_factory_ex_t<cue_parser::input_wrapper_cue_t<t_input_impl>,t_flags,input_decoder_v2> m_input_factory;
 	service_factory_single_t<cue_parser::chapterizer_impl_t<t_input_impl> > m_chapterizer_factory;	
 };

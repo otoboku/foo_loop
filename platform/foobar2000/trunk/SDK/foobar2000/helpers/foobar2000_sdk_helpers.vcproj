@@ -55,6 +55,7 @@
 				PrecompiledHeaderThrough="stdafx.h"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				DebugInformationFormat="3"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -448,10 +449,6 @@
 				</FileConfiguration>
 			</File>
 			<File
-				RelativePath=".\file_info_update_helper.cpp"
-				>
-			</File>
-			<File
 				RelativePath="file_list_helper.cpp"
 				>
 				<FileConfiguration
@@ -540,28 +537,6 @@
 			<File
 				RelativePath=".\mp3_utils.cpp"
 				>
-			</File>
-			<File
-				RelativePath="preload_info_helper.cpp"
-				>
-				<FileConfiguration
-					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						BasicRuntimeChecks="3"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Debug|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						Optimization="0"
-						BasicRuntimeChecks="3"
-					/>
-				</FileConfiguration>
 			</File>
 			<File
 				RelativePath=".\seekabilizer.cpp"
@@ -747,10 +722,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\cfg_structlist.h"
-				>
-			</File>
-			<File
 				RelativePath=".\clipboard.h"
 				>
 			</File>
@@ -792,10 +763,6 @@
 			</File>
 			<File
 				RelativePath="file_info_const_impl.h"
-				>
-			</File>
-			<File
-				RelativePath=".\file_info_update_helper.h"
 				>
 			</File>
 			<File
@@ -855,7 +822,7 @@
 				>
 			</File>
 			<File
-				RelativePath="preload_info_helper.h"
+				RelativePath=".\ProfileCache.h"
 				>
 			</File>
 			<File

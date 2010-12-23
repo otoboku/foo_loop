@@ -1,5 +1,7 @@
 #include "foobar2000.h"
 
+static const char unpack_prefix[] = "unpack://";
+static const unsigned unpack_prefix_len = 9;
 
 void unpacker::g_open(service_ptr_t<file> & p_out,const service_ptr_t<file> & p,abort_callback & p_abort)
 {
@@ -83,6 +85,12 @@ void filesystem::g_get_display_path(const char * path,pfc::string_base & out)
 	}
 }
 
+filesystem::ptr filesystem::g_get_interface(const char * path) {
+	filesystem::ptr rv;
+	if (!g_get_interface(rv, path)) throw exception_io_no_handler_for_path();
+	return rv;
+
+}
 bool filesystem::g_get_interface(service_ptr_t<filesystem> & p_out,const char * path)
 {
 	service_enum_t<filesystem> e;
@@ -101,23 +109,12 @@ bool filesystem::g_get_interface(service_ptr_t<filesystem> & p_out,const char * 
 void filesystem::g_open(service_ptr_t<file> & p_out,const char * path,t_open_mode mode,abort_callback & p_abort)
 {
 	TRACK_CALL_TEXT("filesystem::g_open");
-	service_ptr_t<filesystem> fs;
-	if (!g_get_interface(fs,path)) throw exception_io_no_handler_for_path();
-	fs->open(p_out,path,mode,p_abort);
+	g_get_interface(path)->open(p_out,path,mode,p_abort);
 }
 
+
 void filesystem::g_open_timeout(service_ptr_t<file> & p_out,const char * p_path,t_open_mode p_mode,double p_timeout,abort_callback & p_abort) {
-	pfc::lores_timer timer;
-	timer.start();
-	for(;;) {
-		try {
-			g_open(p_out,p_path,p_mode,p_abort);
-			break;
-		} catch(exception_io_sharing_violation) {
-			if (timer.query() > p_timeout) throw;
-			p_abort.sleep(0.01);
-		}
-	}
+	FB2K_RETRY_ON_SHARING_VIOLATION( g_open(p_out, p_path, p_mode, p_abort), p_abort, p_timeout);
 }
 
 bool filesystem::g_exists(const char * p_path,abort_callback & p_abort)
@@ -141,58 +138,24 @@ bool filesystem::g_exists_writeable(const char * p_path,abort_callback & p_abort
 }
 
 void filesystem::g_remove(const char * p_path,abort_callback & p_abort) {
-	service_ptr_t<filesystem> fs;
-	if (!g_get_interface(fs,p_path)) throw exception_io_no_handler_for_path();
-	fs->remove(p_path,p_abort);
+	g_get_interface(p_path)->remove(p_path,p_abort);
 }
 
 void filesystem::g_remove_timeout(const char * p_path,double p_timeout,abort_callback & p_abort) {
-	pfc::lores_timer timer;
-	timer.start();
-	for(;;) {
-		try {
-			g_remove(p_path,p_abort);
-			break;
-		} catch(exception_io_sharing_violation) {
-			if (timer.query() > p_timeout) throw;
-			p_abort.sleep(0.01);
-		}
-	}
+	FB2K_RETRY_ON_SHARING_VIOLATION( g_remove(p_path, p_abort), p_abort, p_timeout );
 }
 
 void filesystem::g_move_timeout(const char * p_src,const char * p_dst,double p_timeout,abort_callback & p_abort) {
-	pfc::lores_timer timer;
-	timer.start();
-	for(;;) {
-		try {
-			g_move(p_src,p_dst,p_abort);
-			break;
-		} catch(exception_io_sharing_violation) {
-			if (timer.query() > p_timeout) throw;
-			p_abort.sleep(0.01);
-		}
-	}
+	FB2K_RETRY_ON_SHARING_VIOLATION( g_move(p_src, p_dst, p_abort), p_abort, p_timeout );
 }
 
 void filesystem::g_copy_timeout(const char * p_src,const char * p_dst,double p_timeout,abort_callback & p_abort) {
-	pfc::lores_timer timer;
-	timer.start();
-	for(;;) {
-		try {
-			g_copy(p_src,p_dst,p_abort);
-			break;
-		} catch(exception_io_sharing_violation) {
-			if (timer.query() > p_timeout) throw;
-			p_abort.sleep(0.01);
-		}
-	}
+	FB2K_RETRY_ON_SHARING_VIOLATION( g_copy(p_src, p_dst, p_abort), p_abort, p_timeout );
 }
 
 void filesystem::g_create_directory(const char * p_path,abort_callback & p_abort)
 {
-	service_ptr_t<filesystem> fs;
-	if (!g_get_interface(fs,p_path)) throw exception_io_no_handler_for_path();
-	fs->create_directory(p_path,p_abort);
+	g_get_interface(p_path)->create_directory(p_path,p_abort);
 }
 
 void filesystem::g_move(const char * src,const char * dst,abort_callback & p_abort) {
@@ -210,9 +173,7 @@ void filesystem::g_move(const char * src,const char * dst,abort_callback & p_abo
 void filesystem::g_list_directory(const char * p_path,directory_callback & p_out,abort_callback & p_abort)
 {
 	TRACK_CALL_TEXT("filesystem::g_list_directory");
-	service_ptr_t<filesystem> ptr;
-	if (!g_get_interface(ptr,p_path)) throw exception_io_no_handler_for_path();
-	ptr->list_directory(p_path,p_out,p_abort);
+	g_get_interface(p_path)->list_directory(p_path,p_out,p_abort);
 }
 
 
@@ -225,7 +186,7 @@ static void path_pack_string(pfc::string_base & out,const char * src)
 	out.add_char('|');
 }
 
-static int path_unpack_string(pfc::string8 & out,const char * src)
+static int path_unpack_string(pfc::string_base & out,const char * src)
 {
 	int ptr=0;
 	if (src[ptr++]!='|') return -1;
@@ -241,23 +202,20 @@ static int path_unpack_string(pfc::string8 & out,const char * src)
 		ptr++;
 	}
 	if (src[ptr]!='|') return -1;
-	out.add_string(&src[start],len);
+	out.set_string(&src[start],len);
 	ptr++;	
 	return ptr;
 }
 
 
 void filesystem::g_open_precache(service_ptr_t<file> & p_out,const char * p_path,abort_callback & p_abort) {
-	service_ptr_t<filesystem> fs;
-	if (!g_get_interface(fs,p_path)) throw exception_io_no_handler_for_path();
+	service_ptr_t<filesystem> fs = g_get_interface(p_path);
 	if (fs->is_remote(p_path)) throw exception_io_object_is_remote();
 	fs->open(p_out,p_path,open_mode_read,p_abort);
 }
 
 bool filesystem::g_is_remote(const char * p_path) {
-	service_ptr_t<filesystem> fs;
-	if (g_get_interface(fs,p_path)) return fs->is_remote(p_path);
-	else throw exception_io_no_handler_for_path();
+	return g_get_interface(p_path)->is_remote(p_path);
 }
 
 bool filesystem::g_is_recognized_and_remote(const char * p_path) {
@@ -315,7 +273,7 @@ bool archive_impl::get_canonical_path(const char * path,pfc::string_base & out)
 
 bool archive_impl::is_our_path(const char * path)
 {
-	if (strncmp(path,"unpack://",9)) return false;
+	if (!g_is_unpack_path(path)) return false;
 	const char * type = get_archive_type();
 	path += 9;
 	while(*type)
@@ -398,8 +356,21 @@ bool archive_impl::relative_path_parse(const char * relative_path,const char * p
 	return false;
 }
 
-bool archive_impl::g_parse_unpack_path(const char * path,pfc::string8 & archive,pfc::string8 & file)
-{
+bool archive_impl::g_parse_unpack_path_ex(const char * path,pfc::string_base & archive,pfc::string_base & file, pfc::string_base & type) {
+	PFC_ASSERT( g_is_unpack_path(path) );
+	const char * base = path + unpack_prefix_len; // strstr(path, "//");
+	const char * split = strchr(path,'|');
+	if (base == NULL || split == NULL || base > split) return false;
+	// base += 2;
+	type.set_string( base, split - base );
+	int delta = path_unpack_string(archive,split);
+	if (delta<0) return false;
+	split += delta;
+	file = split;
+	return true;
+}
+bool archive_impl::g_parse_unpack_path(const char * path,pfc::string_base & archive,pfc::string_base & file) {
+	PFC_ASSERT( g_is_unpack_path(path) );
 	path  = strchr(path,'|');
 	if (!path) return false;
 	int delta = path_unpack_string(archive,path);
@@ -409,9 +380,13 @@ bool archive_impl::g_parse_unpack_path(const char * path,pfc::string8 & archive,
 	return true;
 }
 
+bool archive_impl::g_is_unpack_path(const char * path) {
+	return strncmp(path,unpack_prefix,unpack_prefix_len) == 0;
+}
+
 void archive_impl::g_make_unpack_path(pfc::string_base & path,const char * archive,const char * file,const char * name)
 {
-	path = "unpack://";
+	path = unpack_prefix;
 	path += name;
 	path_pack_string(path,archive);
 	path += file;
@@ -535,7 +510,7 @@ void filesystem::g_copy(const char * src,const char * dst,abort_callback & p_abo
 			file::g_transfer_object(r_src,r_dst,size,p_abort);
 		} catch(...) {
 			r_dst.release();
-			try {g_remove(dst,abort_callback_impl());} catch(...) {}
+			try {g_remove(dst,abort_callback_dummy());} catch(...) {}
 			throw;
 		}
 	}
@@ -604,9 +579,7 @@ void archive_impl::create_directory(const char * path,abort_callback &) {
 
 void filesystem::g_get_stats(const char * p_path,t_filestats & p_stats,bool & p_is_writeable,abort_callback & p_abort) {
 	TRACK_CALL_TEXT("filesystem::g_get_stats");
-	service_ptr_t<filesystem> fs;
-	if (!g_get_interface(fs,p_path)) throw exception_io_no_handler_for_path();
-	return fs->get_stats(p_path,p_stats,p_is_writeable,p_abort);
+	return g_get_interface(p_path)->get_stats(p_path,p_stats,p_is_writeable,p_abort);
 }
 
 void archive_impl::get_stats(const char * p_path,t_filestats & p_stats,bool & p_is_writeable,abort_callback & p_abort) {
@@ -637,14 +610,24 @@ t_filetimestamp foobar2000_io::filetimestamp_from_system_timer()
 }
 
 void stream_reader::read_string_ex(pfc::string_base & p_out,t_size p_bytes,abort_callback & p_abort) {
-	char * ptr = p_out.lock_buffer(p_bytes);
-	try {
-		read_object(ptr,p_bytes,p_abort);
-	} catch(...) {
-		p_out.unlock_buffer();
-		throw;
+	const t_size expBase = 64*1024;
+	if (p_bytes > expBase) {
+		pfc::array_t<char> temp;
+		t_size allocWalk = expBase;
+		t_size done = 0;
+		for(;;) {
+			const t_size target = pfc::min_t(allocWalk, p_bytes);
+			temp.set_size(target);
+			read_object(temp.get_ptr() + done, target - done, p_abort);
+			if (target == p_bytes) break;
+			done = target;
+			allocWalk <<= 1;
+		}
+		p_out.set_string(temp.get_ptr(), p_bytes);
+	} else {
+		pfc::string_buffer buf(p_out, p_bytes);
+		read_object(buf.get_ptr(),p_bytes,p_abort);
 	}
-	p_out.unlock_buffer();
 }
 void stream_reader::read_string(pfc::string_base & p_out,abort_callback & p_abort)
 {
@@ -671,7 +654,7 @@ void stream_writer::write_string(const char * p_string,t_size p_len,abort_callba
 }
 
 void stream_writer::write_string(const char * p_string,abort_callback & p_abort) {
-	write_string(p_string,infinite,p_abort);
+	write_string(p_string,~0,p_abort);
 }
 
 void stream_writer::write_string_raw(const char * p_string,abort_callback & p_abort) {
@@ -701,7 +684,9 @@ namespace {
 		pfc::string8 m_msg;
 	};
 }
-void foobar2000_io::exception_io_from_win32(DWORD p_code) {
+PFC_NORETURN void foobar2000_io::exception_io_from_win32(DWORD p_code) {
+	//pfc::string_fixed_t<32> debugMsg; debugMsg << "Win32 I/O error #" << (t_uint32)p_code;
+	//TRACK_CALL_TEXT(debugMsg);
 	switch(p_code) {
 	case ERROR_ALREADY_EXISTS:
 	case ERROR_FILE_EXISTS:
@@ -777,7 +762,7 @@ t_filesize file::get_remaining(abort_callback & p_abort) {
 
 
 t_filesize file::g_transfer(service_ptr_t<file> p_src,service_ptr_t<file> p_dst,t_filesize p_bytes,abort_callback & p_abort) {
-	return g_transfer(pfc::safe_cast<stream_reader*>(p_src.get_ptr()),pfc::safe_cast<stream_writer*>(p_dst.get_ptr()),p_bytes,p_abort);
+	return g_transfer(pfc::implicit_cast<stream_reader*>(p_src.get_ptr()),pfc::implicit_cast<stream_writer*>(p_dst.get_ptr()),p_bytes,p_abort);
 }
 
 void file::g_transfer_object(service_ptr_t<file> p_src,service_ptr_t<file> p_dst,t_filesize p_bytes,abort_callback & p_abort) {
@@ -789,7 +774,7 @@ void file::g_transfer_object(service_ptr_t<file> p_src,service_ptr_t<file> p_dst
 			if (newpos > oldsize) p_dst->resize(newpos ,p_abort);
 		}
 	}
-	g_transfer_object(pfc::safe_cast<stream_reader*>(p_src.get_ptr()),pfc::safe_cast<stream_writer*>(p_dst.get_ptr()),p_bytes,p_abort);
+	g_transfer_object(pfc::implicit_cast<stream_reader*>(p_src.get_ptr()),pfc::implicit_cast<stream_writer*>(p_dst.get_ptr()),p_bytes,p_abort);
 }
 
 
@@ -841,7 +826,7 @@ bool foobar2000_io::extract_native_path(const char * p_fspath,pfc::string_base &
 
 bool foobar2000_io::extract_native_path_ex(const char * p_fspath, pfc::string_base & p_native) {
 	if (!_extract_native_path_ptr(p_fspath)) return false;
-	if (p_fspath[0] != '\\' || p_fspath[0] != '\\') {
+	if (p_fspath[0] != '\\' || p_fspath[1] != '\\') {
 		p_native = "\\\\?\\";
 		p_native += p_fspath;
 	} else {
@@ -860,4 +845,51 @@ pfc::string stream_reader::read_string_ex(t_size p_len,abort_callback & p_abort)
 	read_object(temp->lock_buffer(p_len),p_len,p_abort);
 	temp->unlock_buffer();
 	return pfc::string::t_data(temp);
+}
+
+
+void filesystem::remove_directory_content(const char * path, abort_callback & abort) {
+	class myCallback : public directory_callback {
+	public:
+		bool on_entry(filesystem * p_owner,abort_callback & p_abort,const char * p_url,bool p_is_subdirectory,const t_filestats & p_stats) {
+			if (p_is_subdirectory) p_owner->list_directory(p_url, *this, p_abort);
+			try {
+				p_owner->remove(p_url, p_abort);
+			} catch(exception_io_not_found) {}
+			return true;
+		}
+	};
+	myCallback cb;
+	list_directory(path, cb, abort);
+}
+void filesystem::remove_object_recur(const char * path, abort_callback & abort) {
+	try {
+		remove_directory_content(path, abort);
+	} catch(exception_io_not_found) {}
+	remove(path, abort);
+}
+
+void filesystem::g_remove_object_recur(const char * path, abort_callback & abort) {
+	g_get_interface(path)->remove_object_recur(path, abort);
+}
+
+void foobar2000_io::purgeOldFiles(const char * directory, t_filetimestamp period, abort_callback & abort) {
+
+	class myCallback : public directory_callback {
+	public:
+		myCallback(t_filetimestamp period) : m_base(filetimestamp_from_system_timer() - period) {}
+		bool on_entry(filesystem * p_owner,abort_callback & p_abort,const char * p_url,bool p_is_subdirectory,const t_filestats & p_stats) {
+			if (!p_is_subdirectory && p_stats.m_timestamp < m_base) {
+				try {
+					filesystem::g_remove_timeout(p_url, 1, p_abort);
+				} catch(exception_io_not_found) {}
+			}
+			return true;
+		}
+	private:
+		const t_filetimestamp m_base;
+	};
+
+	myCallback cb(period);
+	filesystem::g_list_directory(directory, cb, abort);
 }

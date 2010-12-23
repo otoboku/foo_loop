@@ -318,7 +318,7 @@ namespace pfc {
 			alloc() : m_size(0) {}
 
 			void set_size(t_size p_size) {
-				static_assert<sizeof(m_array) == sizeof(t_item[p_width])>();
+				static_assert_t<sizeof(m_array) == sizeof(t_item[p_width])>();
 
 				if (p_size > p_width) throw pfc::exception_overflow();
 				else if (p_size > m_size) {

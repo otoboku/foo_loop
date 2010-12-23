@@ -8,7 +8,7 @@ namespace pfc {
 	void permutation_validate(t_size const * order, t_size count);
 
 	//! Creates a permutation that moves selected items in a list box by the specified delta-offset.
-	void create_move_items_permutation(t_size * p_output,t_size p_count,const class ::bit_array & p_selection,int p_delta);
+	void create_move_items_permutation(t_size * p_output,t_size p_count,const class bit_array & p_selection,int p_delta);
 }
 
 class order_helper
@@ -22,6 +22,17 @@ public:
 
 	order_helper(const order_helper & p_order) {*this = p_order;}
 
+	static bool g_is_identity(const t_size * order, t_size count) {
+		for(t_size walk = 0; walk < count; ++walk) {
+			if (order[walk] != walk) return false;
+		}
+		return true;
+	}
+	template<typename t_array> static bool g_is_identity(const t_array & p_array) {
+		const t_size count = pfc::array_size_t(p_array);
+		for(t_size walk = 0; walk < count; ++walk) if (p_array[walk] != walk) return false;
+		return true;
+	}
 
 	template<typename t_int>
 	static void g_fill(t_int * p_order,const t_size p_count) {

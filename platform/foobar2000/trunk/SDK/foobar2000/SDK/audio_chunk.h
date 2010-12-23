@@ -6,7 +6,7 @@ class NOVTABLE audio_chunk {
 public:
 
 	enum {
-		sample_rate_min = 1000, sample_rate_max = 1000000
+		sample_rate_min = 1000, sample_rate_max = 2822400
 	};
 	static bool g_is_valid_sample_rate(t_uint32 p_val) {return p_val >= sample_rate_min && p_val <= sample_rate_max;}
 	
@@ -35,12 +35,15 @@ public:
 		channel_config_mono = channel_front_center,
 		channel_config_stereo = channel_front_left | channel_front_right,
 		channel_config_5point1 = channel_front_left | channel_front_right | channel_back_left | channel_back_right | channel_front_center | channel_lfe,
+		channel_config_7point1 = channel_config_5point1 | channel_side_left | channel_side_right,
 
 		defined_channel_count = 18,
 	};
 
-	//! Helper function; guesses default channel map for specified channel count.
+	//! Helper function; guesses default channel map for the specified channel count. Returns 0 on failure.
 	static unsigned g_guess_channel_config(unsigned count);
+	//! Helper function; determines channel map for the specified channel count according to Xiph specs. Throws exception_io_data on failure.
+	static unsigned g_guess_channel_config_xiph(unsigned count);
 
 #ifdef _WIN32
 	//! Helper function; translates audio_chunk channel map to WAVEFORMATEXTENSIBLE channel map.
@@ -98,8 +101,8 @@ public:
 	//! Helper; sets channel count to specified value and uses default channel map for this channel count.
 	void set_channels(unsigned val) {set_channels(val,g_guess_channel_config(val));}
 
-
-	//! Helper; resizes audio data buffer when it's current size is smaller than requested.
+	
+	//! Helper; resizes audio data buffer when its current size is smaller than requested.
 	inline void grow_data_size(t_size p_requested) {if (p_requested > get_data_size()) set_data_size(p_requested);}
 
 
@@ -170,6 +173,7 @@ public:
 	void pad_with_silence(t_size samples);
 	void insert_silence_fromstart(t_size samples);
 	t_size skip_first_samples(t_size samples);
+	void set_silence(t_size samples);
 
 	//! Simple function to get original PCM stream back. Assumes host's endianness, integers are signed - including the 8bit mode; 32bit mode assumed to be float.
 	//! @returns false when the conversion could not be performed because of unsupported bit depth etc.

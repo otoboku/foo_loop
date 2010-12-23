@@ -2,10 +2,39 @@
 #define _PFC_STRING_H_
 
 namespace pfc {
+	inline t_size _strParamLen(const char * str) {
+		return strlen(str);
+	}
+
+	
+	struct string_part_ref {
+		const char * m_ptr;
+		t_size m_len;
+
+
+		static string_part_ref make(const char * ptr, t_size len) {
+			string_part_ref val = {ptr, len}; return val;
+		}
+
+		string_part_ref substring(t_size base) const {
+			PFC_ASSERT( base <= m_len );
+			return make(m_ptr + base, m_len - base);
+		}
+		string_part_ref substring(t_size base, t_size len) const {
+			PFC_ASSERT( base <= m_len && base + len <= m_len );
+			return make(m_ptr + base, len);
+		}
+	};
+
+	static string_part_ref string_part(const char * ptr, t_size len) {
+		string_part_ref val = {ptr, len}; return val;
+	}
+
 
 	class NOVTABLE string_receiver {
 	public:
-		virtual void add_string(const char * p_string,t_size p_string_size = infinite) = 0;
+		virtual void add_string(const char * p_string,t_size p_string_size = ~0) = 0;
+		inline void add_string_(const char * str) {add_string(str, _strParamLen(str));}
 
 		void add_char(t_uint32 c);//adds unicode char to the string
 		void add_byte(char c) {add_string(&c,1);}
@@ -19,9 +48,9 @@ namespace pfc {
 
 	bool is_path_separator(unsigned c);
 	bool is_path_bad_char(unsigned c);
-	bool is_valid_utf8(const char * param,t_size max = infinite);
+	bool is_valid_utf8(const char * param,t_size max = ~0);
 	bool is_lower_ascii(const char * param);
-	bool is_multiline(const char * p_string,t_size p_len = infinite);
+	bool is_multiline(const char * p_string,t_size p_len = ~0);
 	bool has_path_bad_chars(const char * param);
 	void recover_invalid_utf8(const char * src,char * out,unsigned replace);//out must be enough to hold strlen(char) + 1, or appropiately bigger if replace needs multiple chars
 	void convert_to_lower_ascii(const char * src,t_size max,char * out,char replace = '?');//out should be at least strlen(src)+1 long
@@ -39,10 +68,15 @@ namespace pfc {
 	t_size string_find_first_ex(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start = 0);	//returns infinite if not found
 	t_size string_find_last_ex(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start = ~0);	//returns infinite if not found
 
+
+	t_size string_find_first_nc(const char * p_string,t_size p_string_length,char c,t_size p_start = 0); // lengths MUST be valid, no checks are performed (faster than the other flavour)
+	t_size string_find_first_nc(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start = 0); // lengths MUST be valid, no checks are performed (faster than the other falvour);
+
+
 	
 	template<typename t_char>
 	t_size strlen_max_t(const t_char * ptr,t_size max) {
-		if (ptr == NULL) return 0;
+		PFC_ASSERT( ptr != NULL || max == 0 );
 		t_size n = 0;
 		while(n<max && ptr[n] != 0) n++;
 		return n;
@@ -55,8 +89,9 @@ namespace pfc {
 	inline t_size tcslen_max(const TCHAR * ptr,t_size max) {return strlen_max_t(ptr,max);}
 #endif
 	
-	bool string_is_numeric(const char * p_string,t_size p_length = infinite) throw();
+	bool string_is_numeric(const char * p_string,t_size p_length = ~0) throw();
 	inline bool char_is_numeric(char p_char) throw() {return p_char >= '0' && p_char <= '9';}
+	inline bool char_is_hexnumeric(char p_char) throw() {return char_is_numeric(p_char) || (p_char >= 'a' && p_char <= 'f') || (p_char >= 'A' && p_char <= 'F');}
 	inline bool char_is_ascii_alpha_upper(char p_char) throw() {return p_char >= 'A' && p_char <= 'Z';}
 	inline bool char_is_ascii_alpha_lower(char p_char) throw() {return p_char >= 'a' && p_char <= 'z';}
 	inline bool char_is_ascii_alpha(char p_char) throw() {return char_is_ascii_alpha_lower(p_char) || char_is_ascii_alpha_upper(p_char);}
@@ -65,6 +100,30 @@ namespace pfc {
 	unsigned atoui_ex(const char * ptr,t_size max);
 	t_int64 atoi64_ex(const char * ptr,t_size max);
 	t_uint64 atoui64_ex(const char * ptr,t_size max);
+	
+	//Throws exception_invalid_params on failure.
+	unsigned char_to_hex(char c);
+	unsigned char_to_dec(char c);
+
+	//Throws exception_invalid_params or exception_overflow on failure.
+	template<typename t_uint> t_uint atohex(const char * in, t_size inLen) {
+		t_uint ret = 0;
+		const t_uint guard = (t_uint)0xF << (sizeof(t_uint) * 8 - 4);
+		for(t_size walk = 0; walk < inLen; ++walk) {
+			if (ret & guard) throw exception_overflow();
+			ret = (ret << 4) | char_to_hex(in[walk]);
+		}
+		return ret;
+	}
+	template<typename t_uint> t_uint atodec(const char * in, t_size inLen) {
+		t_uint ret = 0;
+		for(t_size walk = 0; walk < inLen; ++walk) {
+			const t_uint prev = ret;
+			ret = (ret * 10) + char_to_dec(in[walk]);
+			if ((ret / 10) != prev) throw exception_overflow();
+		}
+		return ret;
+	}
 
 	t_size strlen_utf8(const char * s,t_size num = ~0) throw();//returns number of characters in utf8 string; num - no. of bytes (optional)
 	t_size utf8_char_len(const char * s,t_size max = ~0) throw();//returns size of utf8 character pointed by s, in bytes, 0 on error
@@ -118,6 +177,8 @@ namespace pfc {
 		virtual char * lock_buffer(t_size p_requested_length) = 0;
 		virtual void unlock_buffer() = 0;
 
+		void set_string_(const char * str) {set_string(str, _strParamLen(str));}
+
 		inline const char * toString() const {return get_ptr();}
 
 		//! For compatibility with old conventions.
@@ -133,8 +194,8 @@ namespace pfc {
 
 		void convert_to_lower_ascii(const char * src,char replace = '?');
 
-		inline const string_base & operator= (const char * src) {set_string(src);return *this;}
-		inline const string_base & operator+= (const char * src) {add_string(src);return *this;}
+		inline const string_base & operator= (const char * src) {set_string_(src);return *this;}
+		inline const string_base & operator+= (const char * src) {add_string_(src);return *this;}
 		inline const string_base & operator= (const string_base & src) {set_string(src);return *this;}
 		inline const string_base & operator+= (const string_base & src) {add_string(src);return *this;}
 
@@ -155,6 +216,7 @@ namespace pfc {
 		t_size find_last(const char * p_string,t_size p_start = ~0) const {return pfc::string_find_last(get_ptr(),p_string,p_start);}
 
 		void fix_dir_separator(char p_char);
+		bool ends_with(char c);
 
 		bool truncate_eol(t_size start = 0);
 		bool fix_eol(const char * append = " (...)",t_size start = 0);
@@ -206,7 +268,7 @@ namespace pfc {
 		t_size get_length() const {return m_length;}
 	private:
 		inline void init() {
-			pfc::static_assert<(max_length>1)>();
+			PFC_STATIC_ASSERT(max_length>1);
 			m_length = 0; m_data[0] = 0;
 		}
 		t_size m_length;
@@ -236,20 +298,42 @@ namespace pfc {
 		inline const char * _get_ptr() const throw() {return used > 0 ? m_data.get_ptr() : "";}
 
 	public:
-		inline const t_self & operator= (const char * src) {set_string(src);return *this;}
-		inline const t_self & operator+= (const char * src) {add_string(src);return *this;}
+		inline void set_string_(const char * str) {set_string_nc(str, strlen(str));}
+		inline void add_string_(const char * str) {add_string_nc(str, strlen(str));}
+		void set_string_nc(const char * ptr, t_size len) {
+			PFC_ASSERT(! m_data.is_owned(ptr) );
+			PFC_ASSERT( strlen_max(ptr, len) == len );
+			makespace(len+1);
+			pfc::memcpy_t(m_data.get_ptr(),ptr,len);
+			used=len;
+			m_data[used]=0;
+		}
+		void add_string_nc(const char * ptr, t_size len) {
+			PFC_ASSERT(! m_data.is_owned(ptr) );
+			PFC_ASSERT( strlen_max(ptr, len) == len );
+			makespace(used+len+1);
+			pfc::memcpy_t(m_data.get_ptr() + used,ptr,len);
+			used+=len;
+			m_data[used]=0;
+		}
+		inline const t_self & operator= (const char * src) {set_string_(src);return *this;}
+		inline const t_self & operator+= (const char * src) {add_string_(src);return *this;}
 		inline const t_self & operator= (const string_base & src) {set_string(src);return *this;}
 		inline const t_self & operator+= (const string_base & src) {add_string(src);return *this;}
 		inline const t_self & operator= (const t_self & src) {set_string(src);return *this;}
 		inline const t_self & operator+= (const t_self & src) {add_string(src);return *this;}
+		
+		inline const t_self & operator= (string_part_ref src) {set_string(src);return *this;}
+		inline const t_self & operator+= (string_part_ref src) {add_string(src);return *this;}
 
 		inline operator const char * () const throw() {return _get_ptr();}
 
 		string8_t() : used(0) {}
-		string8_t(const char * p_string) : used(0) {set_string(p_string);}
+		string8_t(const char * p_string) : used(0) {set_string_(p_string);}
 		string8_t(const char * p_string,t_size p_length) : used(0) {set_string(p_string,p_length);}
 		string8_t(const t_self & p_string) : used(0) {set_string(p_string);}
 		string8_t(const string_base & p_string) : used(0) {set_string(p_string);}
+		string8_t(string_part_ref ref) : used(0) {set_string(ref);}
 
 		void prealloc(t_size p_size) {m_data.prealloc(p_size+1);}
 
@@ -257,6 +341,9 @@ namespace pfc {
 
 		void add_string(const char * p_string,t_size p_length = ~0);
 		void set_string(const char * p_string,t_size p_length = ~0);
+		
+		void set_string(string_part_ref ref) {set_string_nc(ref.m_ptr, ref.m_len);}
+		void add_string(string_part_ref ref) {add_string_nc(ref.m_ptr, ref.m_len);}
 
 		void truncate(t_size len)
 		{
@@ -328,8 +415,9 @@ namespace pfc {
 		string_base & m_owner;
 		char * m_buffer;
 	public:
-		explicit string_buffer(string_base & p_string,t_size p_requeted_length) : m_owner(p_string) {m_buffer = m_owner.lock_buffer(p_requeted_length);}
+		explicit string_buffer(string_base & p_string,t_size p_requested_length) : m_owner(p_string) {m_buffer = m_owner.lock_buffer(p_requested_length);}
 		~string_buffer() {m_owner.unlock_buffer();}
+		char * get_ptr() {return m_buffer;}
 		operator char* () {return m_buffer;}
 	};
 
@@ -409,7 +497,7 @@ namespace pfc {
 	};
 
 	void float_to_string(char * out,t_size out_max,double val,unsigned precision,bool force_sign = false);//doesnt add E+X etc, has internal range limits, useful for storing float numbers as strings without having to bother with international coma/dot settings BS
-	double string_to_float(const char * src,t_size len = infinite);
+	double string_to_float(const char * src,t_size len = ~0);
 
 	template<>
 	inline void swap_t(string8 & p_item1,string8 & p_item2)
@@ -477,6 +565,9 @@ namespace pfc {
 	private:
 		char m_buffer[17];
 	};
+	
+	char format_hex_char_lowercase(unsigned p_val);
+	char format_hex_char(unsigned p_val);
 
 
 	typedef string8_fastalloc string_formatter;
@@ -545,7 +636,7 @@ namespace pfc {
 	template<typename t_stringbuffer = pfc::string8_fastalloc>
 	class format_pad_left {
 	public:
-		format_pad_left(t_size p_chars,t_uint32 p_padding /* = ' ' */,const char * p_string,t_size p_string_length = infinite) {
+		format_pad_left(t_size p_chars,t_uint32 p_padding /* = ' ' */,const char * p_string,t_size p_string_length = ~0) {
 			t_size source_len = 0, source_walk = 0;
 			
 			while(source_walk < p_string_length && source_len < p_chars) {
@@ -569,7 +660,7 @@ namespace pfc {
 	template<typename t_stringbuffer = pfc::string8_fastalloc>
 	class format_pad_right {
 	public:
-		format_pad_right(t_size p_chars,t_uint32 p_padding /* = ' ' */,const char * p_string,t_size p_string_length = infinite) {
+		format_pad_right(t_size p_chars,t_uint32 p_padding /* = ' ' */,const char * p_string,t_size p_string_length = ~0) {
 			t_size source_len = 0, source_walk = 0;
 			
 			while(source_walk < p_string_length && source_len < p_chars) {
@@ -612,16 +703,18 @@ namespace pfc {
 
 }
 
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,const char * p_source) {p_fmt.add_string(p_source); return p_fmt;}
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_int32 p_val) {return p_fmt << pfc::format_int(p_val);}
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_uint32 p_val) {return p_fmt << pfc::format_uint(p_val);}
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_int64 p_val) {return p_fmt << pfc::format_int(p_val);}
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_uint64 p_val) {return p_fmt << pfc::format_uint(p_val);}
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,double p_val) {return p_fmt << pfc::format_float(p_val);}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,const char * p_source) {p_fmt.add_string_(p_source); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,pfc::string_part_ref source) {p_fmt.add_string(source.m_ptr, source.m_len); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_int32 p_val) {p_fmt.add_string(pfc::format_int(p_val)); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_uint32 p_val) {p_fmt.add_string(pfc::format_uint(p_val)); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_int64 p_val) {p_fmt.add_string(pfc::format_int(p_val)); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,t_uint64 p_val) {p_fmt.add_string(pfc::format_uint(p_val)); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,double p_val) {p_fmt.add_string(pfc::format_float(p_val)); return p_fmt;}
+inline pfc::string_base & operator<<(pfc::string_base & p_fmt,std::exception const & p_exception) {p_fmt.add_string(p_exception.what()); return p_fmt;}
 
-inline pfc::string_base & operator<<(pfc::string_base & p_fmt,std::exception const & p_exception) {return p_fmt << p_exception.what();}
-
-
+template<template<typename> class t_alloc> inline pfc::string8_t<t_alloc> & operator<< (pfc::string8_t<t_alloc> & str, const char * src) {str.add_string_(src); return str;}
+template<template<typename> class t_alloc> inline pfc::string8_t<t_alloc> & operator<< (pfc::string8_t<t_alloc> & str, pfc::string_base const & src) {str.add_string(src); return str;}
+template<template<typename> class t_alloc> inline pfc::string8_t<t_alloc> & operator<< (pfc::string8_t<t_alloc> & str, pfc::string_part_ref src) {str.add_string(src); return str;}
 
 
 
@@ -632,16 +725,16 @@ namespace pfc {
 	private:
 		typedef string_simple_t<t_char> t_self;
 	public:
-		t_size length(t_size p_limit = infinite) const {return pfc::strlen_t(get_ptr(),p_limit);}
+		t_size length(t_size p_limit = ~0) const {return pfc::strlen_t(get_ptr(),p_limit);}
 		bool is_empty() const {return length(1) == 0;}
-		void set_string(const t_char * p_source,t_size p_length = infinite) {
+		void set_string(const t_char * p_source,t_size p_length = ~0) {
 			t_size length = pfc::strlen_t(p_source,p_length);
 			m_buffer.set_size(length + 1);
 			pfc::memcpy_t(m_buffer.get_ptr(),p_source,length);
 			m_buffer[length] = 0;
 		}
 		string_simple_t() {}
-		string_simple_t(const t_char * p_source,t_size p_length = infinite) {set_string(p_source,p_length);}
+		string_simple_t(const t_char * p_source,t_size p_length = ~0) {set_string(p_source,p_length);}
 		const t_self & operator=(const t_char * p_source) {set_string(p_source);return *this;}
 		operator const t_char* () const {return get_ptr();}
 		const t_char * get_ptr() const {return m_buffer.get_size() > 0 ? m_buffer.get_ptr() : pfc::empty_string_t<t_char>();}
@@ -669,18 +762,28 @@ namespace pfc {
 
 
 
+	template<typename t_source> static void stringCombine(pfc::string_base & out, t_source const & in, const char * separator, const char * separatorLast) {
+		out.reset();
+		for(t_source::const_iterator walk = in.first(); walk.is_valid(); ++walk) {
+			if (!out.is_empty()) {
+				if (walk == in.last()) out << separatorLast;
+				else out << separator;
+			}
+			out << stringToPtr(*walk);
+		}
+	}
 
 	template<typename t_output, typename t_splitCheck>
-	void splitStringEx(t_output & p_output, const t_splitCheck & p_check, const char * p_string, t_size p_stringLen = infinite) {
+	void splitStringEx(t_output & p_output, const t_splitCheck & p_check, const char * p_string, t_size p_stringLen = ~0) {
 		t_size walk = 0, splitBase = 0;
 		const t_size max = strlen_max(p_string,p_stringLen);
 		for(;walk < max;) {
-			t_size delta = p_check(p_string + walk,p_stringLen - walk);
+			t_size delta = p_check(p_string + walk,max - walk);
 			if (delta > 0) {
 				if (walk > splitBase) p_output(p_string + splitBase, walk - splitBase);
 				splitBase = walk + delta;
 			} else {
-				delta = utf8_char_len(p_string + walk, p_stringLen - walk);
+				delta = utf8_char_len(p_string + walk, max - walk);
 				if (delta == 0) break;
 			}
 			walk += delta;
@@ -696,9 +799,12 @@ namespace pfc {
 	private:
 		t_size m_count;
 	};
-	class __splitStringSimple_check {
+
+	template<typename t_param> class _splitStringSimple_check;
+
+	template<> class _splitStringSimple_check<const char*> {
 	public:
-		__splitStringSimple_check(const char * p_chars) {
+		_splitStringSimple_check(const char * p_chars) {
 			m_chars.set_size(strlen_utf8(p_chars));
 			for(t_size walk = 0, ptr = 0; walk < m_chars.get_size(); ++walk) {
 				ptr += utf8_decode_char(p_chars + ptr,m_chars[walk]);
@@ -717,12 +823,23 @@ namespace pfc {
 	private:
 		array_t<t_uint32> m_chars;
 	};
+	template<> class _splitStringSimple_check<char> {
+	public:
+		_splitStringSimple_check(char c) : m_char(c) {}
+		t_size operator()(const char * str, t_size len) const {
+			PFC_ASSERT( len > 0 );
+			if (*str == m_char) return 1;
+			else return 0;
+		}
+	private:
+		const char m_char;
+	};
 	template<typename t_array>
 	class __splitStringSimple_arrayWrapper {
 	public:
 		__splitStringSimple_arrayWrapper(t_array & p_array) : m_walk(), m_array(p_array) {}
 		void operator()(const char * p_string, t_size p_stringLen) {
-			m_array[m_walk++].set_string(p_string,p_stringLen);
+			m_array[m_walk++] = string_part(p_string,p_stringLen);
 		}
 	private:
 		t_size m_walk;
@@ -733,17 +850,15 @@ namespace pfc {
 	public:
 		__splitStringSimple_listWrapper(t_list & p_list) : m_list(p_list) {}
 		void operator()(const char * p_string, t_size p_stringLen) {
-			m_temp.set_string(p_string,p_stringLen);
-			m_list.add_item(m_temp);
+			m_list += string_part(p_string, p_stringLen);
 		}
 	private:
-		string8_fastalloc m_temp;
 		t_list & m_list;
 	};
 
-	template<typename t_array>
-	void splitStringSimple_toArray(t_array & p_output, const char * p_splitChars, const char * p_string, t_size p_stringLen = infinite) {
-		__splitStringSimple_check check(p_splitChars);
+	template<typename t_array, typename t_split>
+	void splitStringSimple_toArray(t_array & p_output, t_split p_split, const char * p_string, t_size p_stringLen = ~0) {
+		_splitStringSimple_check<t_split> check(p_split);
 
 		{
 			__splitStringSimple_calculateSubstringCount wrapper;
@@ -756,9 +871,9 @@ namespace pfc {
 			splitStringEx(wrapper,check,p_string,p_stringLen);
 		}
 	}
-	template<typename t_list>
-	void splitStringSimple_toList(t_list & p_output, const char * p_splitChars, const char * p_string, t_size p_stringLen = infinite) {
-		__splitStringSimple_check check(p_splitChars);
+	template<typename t_list, typename t_split>
+	void splitStringSimple_toList(t_list & p_output, t_split p_split, const char * p_string, t_size p_stringLen = ~0) {
+		_splitStringSimple_check<t_split> check(p_split);
 
 		__splitStringSimple_listWrapper<t_list> wrapper(p_output);
 		splitStringEx(wrapper,check,p_string,p_stringLen);
@@ -768,11 +883,21 @@ namespace pfc {
 		for(;;) {
 			const char * next = strchr(str, '\n');
 			if (next == NULL) {
-				out.insert_last()->set_string(str); break;
+				out += string_part(str, strlen(str)); break;
 			}
 			const char * walk = next;
 			while(walk > str && walk[-1] == '\r') --walk;
-			out.insert_last()->set_string(str, walk - str);
+			out += string_part(str, walk - str);
+			str = next + 1;
+		}
+	}
+	template<typename t_out> void splitStringByChar(t_out & out, const char * str, char c) {
+		for(;;) {
+			const char * next = strchr(str, c);
+			if (next == NULL) {
+				out += string_part(str, strlen(str)); break;
+			}
+			out += string_part(str, next - str);
 			str = next + 1;
 		}
 	}
@@ -780,11 +905,17 @@ namespace pfc {
 	void stringToUpperAppend(string_base & p_out, const char * p_source, t_size p_sourceLen);
 	void stringToLowerAppend(string_base & p_out, const char * p_source, t_size p_sourceLen);
 	int stringCompareCaseInsensitive(const char * s1, const char * s2);
+	int stringCompareCaseInsensitiveEx(string_part_ref s1, string_part_ref s2);
 	t_uint32 charLower(t_uint32 param);
 	t_uint32 charUpper(t_uint32 param);
 
-	template<typename T> inline const char * stringToPtr(T const& val) {return val.get_ptr();}
-	inline const char * stringToPtr(const char* val) {return val;}
+	template<typename T> static const char * stringToPtr(T const& val) {return val.get_ptr();}
+	static const char * stringToPtr(const char* val) {return val;}
+
+	template<typename T> static string_part_ref stringToRef(T const & val) {return string_part(val.get_ptr(), val.length());}
+	static string_part_ref stringToRef(string_part_ref val) {return val;}
+	static string_part_ref stringToRef(const char * val) {return string_part(val, strlen(val));}
+
 
 
 
@@ -807,7 +938,7 @@ namespace pfc {
 	//! Writes a string to a fixed-size buffer. Truncates the string if necessary. Always writes a null terminator.
 	template<typename TChar, t_size len, typename TSource>
 	void stringToBuffer(TChar (&buffer)[len], const TSource & source) {
-		pfc::static_assert<(len>0)>();
+		PFC_STATIC_ASSERT(len>0);
 		t_size walk;
 		for(walk = 0; walk < len - 1 && source[walk] != 0; ++walk) {
 			buffer[walk] = source[walk];
@@ -844,11 +975,15 @@ namespace pfc {
 	}
 
 	template<typename t_char>
-	int strcmp_partial_t(const t_char * p_string,const t_char * p_substring) throw() {return strcmp_partial_ex_t(p_string,infinite,p_substring,infinite);}
+	int strcmp_partial_t(const t_char * p_string,const t_char * p_substring) throw() {return strcmp_partial_ex_t(p_string,~0,p_substring,~0);}
 
 	static int strcmp_partial_ex(const char * str, t_size strLen, const char * substr, t_size substrLen) throw() {return strcmp_partial_ex(str, strLen, substr, substrLen); }
 	static int strcmp_partial(const char * str, const char * substr) throw() {return strcmp_partial_t(str, substr); }
 
+	
+	void urlEncodeAppendRaw(pfc::string_base & out, const char * in, t_size inSize);
+	void urlEncodeAppend(pfc::string_base & out, const char * in);
+	void urlEncode(pfc::string_base & out, const char * in);
 }
 
 #endif //_PFC_STRING_H_

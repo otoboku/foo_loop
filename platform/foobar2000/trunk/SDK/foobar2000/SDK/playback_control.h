@@ -17,10 +17,16 @@ public:
 	enum t_track_command {
 		track_command_default = 0,
 		track_command_play,
+		//! Plays the next track from the current playlist according to the current playback order.
 		track_command_next,
+		//! Plays the previous track from the current playlist according to the current playback order.
 		track_command_prev,
+		//! For internal use only, do not use.
 		track_command_settrack,
+		//! Plays a random track from the current playlist.
 		track_command_rand,
+
+		//! For internal use only, do not use.
 		track_command_resume,
 	};
 
@@ -120,6 +126,8 @@ public:
 	inline void play_start(t_track_command p_command = track_command_play,bool p_paused = false) {start(p_command,p_paused);}
 	//deprecated
 	inline void play_stop() {stop();}
+
+	static const int volume_mute = -100;
 
 	FB2K_MAKE_SERVICE_INTERFACE_ENTRYPOINT(playback_control);
 };

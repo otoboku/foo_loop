@@ -11,7 +11,7 @@ public:
 	void set(const void * p_buffer,t_size p_size);
 	void set(const mem_block_container & source) {copy(source);}
 	template<typename t_source> void set(const t_source & source) {
-		pfc::static_assert<sizeof(source[0]) == 1>();
+		PFC_STATIC_ASSERT( sizeof(source[0]) == 1 );
 		set(source.get_ptr(), source.get_size());
 	}
 
@@ -57,7 +57,7 @@ template<typename t_ref>
 class mem_block_container_ref_impl : public mem_block_container {
 public:
 	mem_block_container_ref_impl(t_ref & ref) : m_ref(ref) {
-		pfc::static_assert<sizeof(ref[0]) == 1>();
+		PFC_STATIC_ASSERT( sizeof(ref[0]) == 1 );
 	}
 	const void * get_ptr() const {return m_ref.get_ptr();}
 	void * get_ptr() {return m_ref.get_ptr();}

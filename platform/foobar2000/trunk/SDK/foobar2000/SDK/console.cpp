@@ -30,7 +30,7 @@ void console::print(const char* p_message)
 	if (core_api::are_services_available()) {
 		service_ptr_t<console_receiver> ptr;
 		service_enum_t<console_receiver> e;
-		while(e.next(ptr)) ptr->print(p_message,infinite);
+		while(e.next(ptr)) ptr->print(p_message,~0);
 	}
 }
 

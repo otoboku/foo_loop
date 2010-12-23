@@ -1,5 +1,3 @@
-//new in 0.9.5
-
 //! Common class for handling picture data. \n
 //! Type of contained picture data is unknown and to be determined according to memory block contents by code parsing/rendering the picture. Commonly encountered types are: BMP, PNG, JPEG and GIF. \n
 //! Implementation: use album_art_data_impl.
@@ -66,6 +64,9 @@ namespace album_art_ids {
 	static const GUID disc = { 0x3dba9f36, 0xf928, 0x4fa4, { 0x87, 0x9c, 0xd3, 0x40, 0x47, 0x59, 0x58, 0x7e } };
 	//! Album-specific icon (NOT a file type icon).
 	static const GUID icon = { 0x74cdf5b4, 0x7053, 0x4b3d, { 0x9a, 0x3c, 0x54, 0x69, 0xf5, 0x82, 0x6e, 0xec } };
+	//! Artist picture.
+	static const GUID artist = { 0x9a654042, 0xacd1, 0x43f7, { 0xbf, 0xcf, 0xd3, 0xec, 0xf, 0xfe, 0x40, 0xfa } };
+
 };
 
 PFC_DECLARE_EXCEPTION(exception_album_art_not_found,exception_io_not_found,"Album Art Not Found");
@@ -182,6 +183,9 @@ public:
 		return temp;
 	}
 	bool is_empty() const {return m_content.get_count() == 0;}
+	bool remove(const GUID & p_what) {
+		return m_content.remove(p_what);
+	}
 private:
 	pfc::map_t<GUID,album_art_data_ptr> m_content;
 };
@@ -204,7 +208,7 @@ class album_art_extractor_impl_stdtags : public album_art_extractor {
 public:
 	//! @param exts Semicolon-separated list of file format extensions to support.
 	album_art_extractor_impl_stdtags(const char * exts) {
-		pfc::splitStringSimple_toList(m_extensions,";",exts);
+		pfc::splitStringSimple_toList(m_extensions,';',exts);
 	}
 
 	bool is_our_path(const char * p_path,const char * p_extension) {
@@ -219,4 +223,91 @@ public:
 	}
 private:
 	pfc::avltree_t<pfc::string,pfc::string::comparatorCaseInsensitiveASCII> m_extensions;
+};
+
+
+
+//! Helper - a more advanced implementation of album_art_extractor_instance.
+class album_art_extractor_instance_fileref : public album_art_extractor_instance {
+public:
+	album_art_extractor_instance_fileref(file::ptr f) : m_file(f) {}
+
+	void set(const GUID & p_what,t_filesize p_offset, t_filesize p_size) {
+		const t_fileref ref = {p_offset, p_size};
+		m_data.set(p_what, ref);
+		m_cache.remove(p_what);
+	}
+	
+	bool have_item(const GUID & p_what) {
+		return m_data.have_item(p_what);
+	}
+	
+	album_art_data_ptr query(const GUID & p_what,abort_callback & p_abort) {
+		album_art_data_ptr item;
+		if (m_cache.query(p_what,item)) return item;
+		t_fileref ref;
+		if (!m_data.query(p_what, ref)) throw exception_album_art_not_found();
+		m_file->seek(ref.m_offset, p_abort);
+		item = album_art_data_impl::g_create(m_file.get_ptr(), pfc::downcast_guarded<t_size>(ref.m_size), p_abort);
+		m_cache.set(p_what, item);
+		return item;
+	}
+	bool is_empty() const {return m_data.get_count() == 0;}
+private:
+	struct t_fileref {
+		t_filesize m_offset, m_size;
+	};
+	const file::ptr m_file;
+	pfc::map_t<GUID, t_fileref> m_data;
+	pfc::map_t<GUID, album_art_data::ptr> m_cache;
+};
+
+
+class NOVTABLE album_art_path_list : public service_base {
+	FB2K_MAKE_SERVICE_INTERFACE(album_art_path_list, service_base)
+public:
+	virtual const char * get_path(t_size index) const = 0;
+	virtual t_size get_count() const = 0;
+};
+
+class album_art_path_list_impl : public album_art_path_list {
+public:
+	template<typename t_in> album_art_path_list_impl(const t_in & in) {pfc::list_to_array(m_data, in);}
+	const char * get_path(t_size index) const {return m_data[index];}
+	t_size get_count() const {return m_data.get_size();}
+private:
+	pfc::array_t<pfc::string8> m_data;
+};
+
+class album_art_path_list_dummy : public album_art_path_list {
+public:
+	const char * get_path(t_size index) const {uBugCheck();}
+	t_size get_count() const {return 0;}
+};
+
+class NOVTABLE album_art_extractor_instance_v2 : public album_art_extractor_instance {
+	FB2K_MAKE_SERVICE_INTERFACE(album_art_extractor_instance_v2, album_art_extractor_instance)
+public:
+	virtual album_art_path_list::ptr query_paths(const GUID & p_what, abort_callback & p_abort) = 0;
+};
+
+
+
+//! \since 1.0
+class NOVTABLE album_art_manager_v2 : public service_base {
+	FB2K_MAKE_SERVICE_INTERFACE_ENTRYPOINT(album_art_manager_v2)
+public:
+	//! Instantiates an album art extractor object for the specified group of items.
+	virtual album_art_extractor_instance_v2::ptr open(metadb_handle_list_cref items, pfc::list_base_const_t<GUID> const & ids, abort_callback & abort) = 0;
+	
+	//! Instantiates an album art extractor object that retrieves stub images.
+	virtual album_art_extractor_instance_v2::ptr open_stub(abort_callback & abort) = 0;
+};
+
+
+//! \since 1.0
+class NOVTABLE album_art_fallback : public service_base {
+	FB2K_MAKE_SERVICE_INTERFACE_ENTRYPOINT(album_art_fallback)
+public:
+	virtual album_art_extractor_instance_v2::ptr open(metadb_handle_list_cref items, pfc::list_base_const_t<GUID> const & ids, abort_callback & abort) = 0;
 };

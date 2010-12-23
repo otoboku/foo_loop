@@ -80,43 +80,38 @@ bool input_helper::is_open() {
 	return m_input.is_valid();
 }
 
+void input_helper::set_pause(bool state) {
+	input_decoder_v3::ptr v3;
+	if (m_input->service_query_t(v3)) v3->set_pause(state);
+}
+bool input_helper::flush_on_pause() {
+	input_decoder_v3::ptr v3;
+	if (m_input->service_query_t(v3)) return v3->flush_on_pause();
+	else return false;
+}
+
+
 void input_helper::set_logger(event_logger::ptr ptr) {
-	if (m_input.is_empty()) throw pfc::exception_bug_check_v2();
 	input_decoder_v2::ptr v2;
 	if (m_input->service_query_t(v2)) v2->set_logger(ptr);
 }
 
 bool input_helper::run_raw(audio_chunk & p_chunk, mem_block_container & p_raw, abort_callback & p_abort) {
-	if (m_input.is_empty()) throw pfc::exception_bug_check_v2();
 	input_decoder_v2::ptr v2;
 	if (!m_input->service_query_t(v2)) throw pfc::exception_not_implemented();
 	return v2->run_raw(p_chunk, p_raw, p_abort);
 }
 
-bool input_helper::run(audio_chunk & p_chunk,abort_callback & p_abort)
-{
-	if (m_input.is_valid()) {
-		TRACK_CODE("input_decoder::run",return m_input->run(p_chunk,p_abort));
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+bool input_helper::run(audio_chunk & p_chunk,abort_callback & p_abort) {
+	TRACK_CODE("input_decoder::run",return m_input->run(p_chunk,p_abort));
 }
 
-void input_helper::seek(double seconds,abort_callback & p_abort)
-{
-	if (m_input.is_valid()) {
-		TRACK_CODE("input_decoder::seek",m_input->seek(seconds,p_abort));
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+void input_helper::seek(double seconds,abort_callback & p_abort) {
+	TRACK_CODE("input_decoder::seek",m_input->seek(seconds,p_abort));
 }
 
 bool input_helper::can_seek() {
-	if (m_input.is_valid()) {
-		return m_input->can_seek();
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+	return m_input->can_seek();
 }
 
 void input_helper::set_full_buffer(t_filesize val) {
@@ -129,27 +124,15 @@ void input_helper::on_idle(abort_callback & p_abort) {
 }
 
 bool input_helper::get_dynamic_info(file_info & p_out,double & p_timestamp_delta) {
-	if (m_input.is_valid()) {
-		TRACK_CODE("input_decoder::get_dynamic_info",return m_input->get_dynamic_info(p_out,p_timestamp_delta));
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+	TRACK_CODE("input_decoder::get_dynamic_info",return m_input->get_dynamic_info(p_out,p_timestamp_delta));
 }
 
 bool input_helper::get_dynamic_info_track(file_info & p_out,double & p_timestamp_delta) {
-	if (m_input.is_valid()) {
-		TRACK_CODE("input_decoder::get_dynamic_info_track",return m_input->get_dynamic_info_track(p_out,p_timestamp_delta));
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+	TRACK_CODE("input_decoder::get_dynamic_info_track",return m_input->get_dynamic_info_track(p_out,p_timestamp_delta));
 }
 
 void input_helper::get_info(t_uint32 p_subsong,file_info & p_info,abort_callback & p_abort) {
-	if (m_input.is_valid()) {
-		TRACK_CODE("input_decoder::get_info",m_input->get_info(p_subsong,p_info,p_abort));
-	} else {
-		throw pfc::exception_bug_check_v2();
-	}
+	TRACK_CODE("input_decoder::get_info",m_input->get_info(p_subsong,p_info,p_abort));
 }
 
 const char * input_helper::get_path() const {
@@ -212,7 +195,7 @@ bool dead_item_filter::run(const pfc::list_base_const_t<metadb_handle_ptr> & p_l
 
 	valid_handles.sort_by_pointer();
 	for(t_size listidx=0;listidx<p_list.get_count();listidx++) {
-		bool dead = valid_handles.bsearch_by_pointer(p_list[listidx]) == infinite;
+		bool dead = valid_handles.bsearch_by_pointer(p_list[listidx]) == ~0;
 		if (dead) console::formatter() << "Dead item: " << p_list[listidx];
 		p_mask.set(listidx,dead);
 	}

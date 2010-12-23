@@ -1,4 +1,4 @@
-#include "../SDK/foobar2000.h"
+#include "stdafx.h"
 
 enum {
 	raw_bits_per_sample = 16,
@@ -20,6 +20,7 @@ public:
 
 	void get_info(file_info & p_info,abort_callback & p_abort) {
 		t_filesize size = m_file->get_size(p_abort);
+		//note that the file size is not always known, for an example, live streams and alike have no defined size and filesize_invalid is returned
 		if (size != filesize_invalid) {
 			//file size is known, let's set length
 			p_info.set_length(audio_math::samples_to_time( size / raw_total_sample_width, raw_sample_rate));
@@ -62,13 +63,13 @@ public:
 		m_file->seek(target,p_abort);
 	}
 	bool decode_can_seek() {return m_file->can_seek();}
-	bool decode_get_dynamic_info(file_info & p_out, double & p_timestamp_delta) {return false;}
-	bool decode_get_dynamic_info_track(file_info & p_out, double & p_timestamp_delta) {return false;}
+	bool decode_get_dynamic_info(file_info & p_out, double & p_timestamp_delta) {return false;} // deals with dynamic information such as VBR bitrates
+	bool decode_get_dynamic_info_track(file_info & p_out, double & p_timestamp_delta) {return false;} // deals with dynamic information such as track changes in live streams
 	void decode_on_idle(abort_callback & p_abort) {m_file->on_idle(p_abort);}
 
 	void retag(const file_info & p_info,abort_callback & p_abort) {throw exception_io_unsupported_format();}
 	
-	static bool g_is_our_content_type(const char * p_content_type) {return false;}
+	static bool g_is_our_content_type(const char * p_content_type) {return false;} // match against supported mime types here
 	static bool g_is_our_path(const char * p_path,const char * p_extension) {return stricmp_utf8(p_extension,"raw") == 0;}
 public:
 	service_ptr_t<file> m_file;
@@ -77,6 +78,5 @@ public:
 
 static input_singletrack_factory_t<input_raw> g_input_raw_factory;
 
-
-DECLARE_COMPONENT_VERSION("RAW input","0.1","about message goes here");
+// Declare .RAW as a supported file type to make it show in "open file" dialog etc.
 DECLARE_FILE_TYPE("Raw files","*.RAW");

@@ -1,5 +1,10 @@
 namespace pfc {
 
+	struct _rcptr_null;
+	typedef _rcptr_null* t_rcptr_null;
+
+	static const t_rcptr_null rcptr_null = NULL;
+
 	class rc_container_base {
 	public:
 		long add_ref() throw() {
@@ -31,6 +36,7 @@ namespace pfc {
 		typedef rc_container_base t_container;
 		typedef rc_container_t<t_object> t_container_impl;
 	public:
+		rcptr_t(t_rcptr_null) throw() {__init();}
 		rcptr_t() throw() {__init();}
 		rcptr_t(const t_self & p_source) throw() {__init(p_source);}
 		t_self const & operator=(const t_self & p_source) throw() {__copy(p_source); return *this;}
@@ -39,6 +45,8 @@ namespace pfc {
 		rcptr_t(const rcptr_t<t_source> & p_source) throw() {__init(p_source);}
 		template<typename t_source>
 		const t_self & operator=(const rcptr_t<t_source> & p_source) throw() {__copy(p_source); return *this;}
+
+		const t_self & operator=(t_rcptr_null) throw() {release(); return *this;}
 
 /*		template<typename t_object_cast>
 		operator rcptr_t<t_object_cast>() const throw() {

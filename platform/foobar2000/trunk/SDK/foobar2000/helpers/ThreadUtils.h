@@ -1,15 +1,131 @@
 namespace ThreadUtils {
-	static void WaitAbortable(HANDLE ev, abort_callback & abort, DWORD timeout = INFINITE) {
+	static bool WaitAbortable(HANDLE ev, abort_callback & abort, DWORD timeout = INFINITE) {
 		const HANDLE handles[2] = {ev, abort.get_abort_event()};
 		SetLastError(0);
-		const DWORD status = WaitForMultipleObjects(2, handles, FALSE, INFINITE);
+		const DWORD status = WaitForMultipleObjects(2, handles, FALSE, timeout);
 		switch(status) {
+			case WAIT_TIMEOUT:
+				PFC_ASSERT( timeout != INFINITE );
+				return false;
 			case WAIT_OBJECT_0:
-				break;
+				return true;
 			case WAIT_OBJECT_0 + 1:
 				throw exception_aborted();
+			case WAIT_FAILED:
+				WIN32_OP_FAIL();
 			default:
-				throw exception_win32(GetLastError());
+				uBugCheck();
+		}
+	}
+
+	static void ProcessPendingMessages() {
+		MSG msg = {};
+		while(PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+			DispatchMessage(&msg);
+		}
+	}
+
+	
+	static void WaitAbortable_MsgLoop(HANDLE ev, abort_callback & abort) {
+		const HANDLE handles[2] = {ev, abort.get_abort_event()};
+		for(;;) {
+			SetLastError(0);
+			const DWORD status = MsgWaitForMultipleObjects(2, handles, FALSE, INFINITE, QS_ALLEVENTS);
+			switch(status) {
+				case WAIT_TIMEOUT:
+					PFC_ASSERT(!"How did we get here?");
+					uBugCheck();
+				case WAIT_OBJECT_0:
+					return;
+				case WAIT_OBJECT_0 + 1:
+					throw exception_aborted();
+				case WAIT_OBJECT_0 + 2:
+					ProcessPendingMessages();
+					break;
+				case WAIT_FAILED:
+					WIN32_OP_FAIL();
+				default:
+					uBugCheck();
+			}
+		}
+	}
+	
+	static t_size MultiWaitAbortable_MsgLoop(const HANDLE * ev, t_size evCount, abort_callback & abort) {
+		pfc::array_t<HANDLE> handles; handles.set_size(evCount + 1);
+		handles[0] = abort.get_abort_event();
+		pfc::memcpy_t(handles.get_ptr() + 1, ev, evCount);
+		for(;;) {
+			SetLastError(0);
+			const DWORD status = MsgWaitForMultipleObjects(handles.get_count(), handles.get_ptr(), FALSE, INFINITE, QS_ALLEVENTS);
+			switch(status) {
+				case WAIT_TIMEOUT:
+					PFC_ASSERT(!"How did we get here?");
+					uBugCheck();
+				case WAIT_OBJECT_0:
+					throw exception_aborted();
+				case WAIT_FAILED:
+					WIN32_OP_FAIL();
+				default:
+					{
+						t_size index = (t_size)(status - (WAIT_OBJECT_0 + 1));
+						if (index == evCount) {
+							ProcessPendingMessages();
+						} else if (index < evCount) {
+							return index;
+						} else {
+							uBugCheck();
+						}
+					}
+			}
+		}
+	}
+
+	static void SleepAbortable_MsgLoop(abort_callback & abort, DWORD timeout /*must not be INFINITE*/) {
+		PFC_ASSERT( timeout != INFINITE );
+		const DWORD entry = GetTickCount();
+		const HANDLE handles[1] = {abort.get_abort_event()};
+		for(;;) {
+			const DWORD done = GetTickCount() - entry;
+			if (done >= timeout) return;
+			SetLastError(0);
+			const DWORD status = MsgWaitForMultipleObjects(1, handles, FALSE, timeout - done, QS_ALLEVENTS);
+			switch(status) {
+				case WAIT_TIMEOUT:
+					return;
+				case WAIT_OBJECT_0:
+					throw exception_aborted();
+				case WAIT_OBJECT_0 + 1:
+					ProcessPendingMessages();
+				default:
+					throw exception_win32(GetLastError());
+			}
+		}
+	}
+
+	static bool WaitAbortable_MsgLoop(HANDLE ev, abort_callback & abort, DWORD timeout /*must not be INFINITE*/) {
+		PFC_ASSERT( timeout != INFINITE );
+		const DWORD entry = GetTickCount();
+		const HANDLE handles[2] = {ev, abort.get_abort_event()};
+		for(;;) {
+			const DWORD done = GetTickCount() - entry;
+			if (done >= timeout) return false;
+			SetLastError(0);
+			const DWORD status = MsgWaitForMultipleObjects(2, handles, FALSE, timeout - done, QS_ALLEVENTS);
+			switch(status) {
+				case WAIT_TIMEOUT:
+					return false;
+				case WAIT_OBJECT_0:
+					return true;
+				case WAIT_OBJECT_0 + 1:
+					throw exception_aborted();
+				case WAIT_OBJECT_0 + 2:
+					ProcessPendingMessages();
+					break;
+				case WAIT_FAILED:
+					WIN32_OP_FAIL();
+				default:
+					uBugCheck();
+			}
 		}
 	}
 
@@ -25,6 +141,16 @@ namespace ThreadUtils {
 		}
 		template<typename TDestination> void Get(TDestination & out, abort_callback & abort) {
 			WaitAbortable(m_event.get(), abort);
+			_Get(out);
+		}
+
+		template<typename TDestination> void Get_MsgLoop(TDestination & out, abort_callback & abort) {
+			WaitAbortable_MsgLoop(m_event.get(), abort);
+			_Get(out);
+		}
+
+	private:
+		template<typename TDestination> void _Get(TDestination & out) {
 			insync(m_sync);
 			pfc::const_iterator<TWhat> iter = m_content.first();
 			pfc::dynamic_assert( iter.is_valid() );
@@ -32,15 +158,13 @@ namespace ThreadUtils {
 			m_content.remove(iter);
 			if (m_content.get_count() == 0) m_event.set_state(false);
 		}
-
-	private:
 		win32_event m_event;
 		critical_section m_sync;
 		pfc::chain_list_v2_t<TWhat> m_content;
 	};
 
 
-	template<typename TBase>
+	template<typename TBase, bool processMsgs = false>
 	class CSingleThreadWrapper : protected pfc::thread {
 	private:
 		enum status {
@@ -85,7 +209,7 @@ namespace ThreadUtils {
 					case success:
 						break;
 					default:
-						throw pfc::exception_bug_check_v2();
+						uBugCheck();
 				}
 			}
 			status m_status;
@@ -119,14 +243,17 @@ namespace ThreadUtils {
 
 	private:
 		void threadProc() {
+			TRACK_CALL_TEXT("CSingleThreadWrapper entry");
 			try {
 				TBase instance;
 				for(;;) {
 					command_ptr cmd;
-					m_commands.Get(cmd, m_threadAbort);
+					if (processMsgs) m_commands.Get_MsgLoop(cmd, m_threadAbort);
+					else m_commands.Get(cmd, m_threadAbort);
 					cmd->execute(instance);
 				}
 			} catch(...) {}
+			if (processMsgs) ProcessPendingMessages();
 		}
 		win32_event m_completionEvent;
 		CObjectQueue<command_ptr> m_commands;

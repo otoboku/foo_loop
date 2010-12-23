@@ -21,7 +21,11 @@
 #include "WindowPositionUtils.h"
 #include "CDialogResizeHelper.h"
 
+#include "BumpableElem.h"
+
 #include "inplace_edit.h"
 #include "inplace_edit_v2.h"
+
+#include "AutoComplete.h"
 
 #endif //_8251B63D_2C1C_4e9d_9320_4E12E46331CB_

@@ -91,7 +91,7 @@ namespace pfc {
 		inline bool operator<(const t_self & p_item) const throw() {return m_ptr < p_item.get_ptr();}
 
 
-		inline T* __unsafe_duplicate() const throw()//should not be used ! temporary !
+		inline T* _duplicate_ptr() const throw()//should not be used ! temporary !
 		{
 			if (m_ptr) m_ptr->refcount_add_ref();
 			return m_ptr;

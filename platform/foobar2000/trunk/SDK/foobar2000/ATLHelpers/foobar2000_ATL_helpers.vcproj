@@ -277,6 +277,10 @@
 			UniqueIdentifier="{4FC737F1-C7A5-4376-A066-2A32D752A2FF}"
 			>
 			<File
+				RelativePath=".\AutoComplete.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CDialogResizeHelper.cpp"
 				>
 			</File>
@@ -332,6 +336,14 @@
 			>
 			<File
 				RelativePath=".\ATLHelpers.h"
+				>
+			</File>
+			<File
+				RelativePath=".\AutoComplete.h"
+				>
+			</File>
+			<File
+				RelativePath=".\BumpableElem.h"
 				>
 			</File>
 			<File
