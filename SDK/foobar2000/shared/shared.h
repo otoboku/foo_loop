@@ -2,6 +2,7 @@
 #define _SHARED_DLL__SHARED_H_
 
 #include "../../pfc/pfc.h"
+#include <signal.h>
 
 #ifndef WIN32
 #error N/A
@@ -14,6 +15,8 @@
 #include <windows.h>
 #include <ddeml.h>
 #include <commctrl.h>
+#include <uxtheme.h>
+#include <tmschema.h>
 
 #ifndef NOTHROW
 #ifdef _MSC_VER
@@ -59,6 +62,7 @@ int SHARED_EXPORT uCharCompare(t_uint32 p_char1,t_uint32 p_char2);
 int SHARED_EXPORT uStringCompare_ConvertNumbers(const char * elem1,const char * elem2);
 HINSTANCE SHARED_EXPORT uLoadLibrary(const char * name);
 HANDLE SHARED_EXPORT uCreateEvent(LPSECURITY_ATTRIBUTES lpEventAttributes,BOOL bManualReset,BOOL bInitialState, const char * lpName);
+HANDLE SHARED_EXPORT GetInfiniteWaitEvent();
 DWORD SHARED_EXPORT uGetModuleFileName(HMODULE hMod,pfc::string_base & out);
 BOOL SHARED_EXPORT uSetClipboardString(const char * ptr);
 BOOL SHARED_EXPORT uGetClipboardString(pfc::string_base & out);
@@ -93,6 +97,7 @@ BOOL SHARED_EXPORT uGetLongPathName(const char * name,pfc::string_base & out);//
 BOOL SHARED_EXPORT uGetFullPathName(const char * name,pfc::string_base & out);
 BOOL SHARED_EXPORT uSearchPath(const char * path, const char * filename, const char * extension, pfc::string_base & p_out);
 BOOL SHARED_EXPORT uFixPathCaps(const char * path,pfc::string_base & p_out);
+//BOOL SHARED_EXPORT uFixPathCapsQuick(const char * path,pfc::string_base & p_out);
 void SHARED_EXPORT uGetCommandLine(pfc::string_base & out);
 BOOL SHARED_EXPORT uGetTempPath(pfc::string_base & out);
 BOOL SHARED_EXPORT uGetTempFileName(const char * path_name,const char * prefix,UINT unique,pfc::string_base & out);
@@ -185,35 +190,29 @@ bool SHARED_EXPORT uTreeView_GetText(HWND wnd,HTREEITEM item,pfc::string_base & 
 #define uUnhookWindowsHookEx UnhookWindowsHookEx
 #define uCallNextHookEx CallNextHookEx
 
-
-/* usage:
-
-  const char * src = "something";
-
-  void * temp = malloc(uOSStringEstimateSize(src));
-  uOSStringConvert(src,temp);
-  //now temp contains OS-friendly (TCHAR) version of src
-*/
-
 typedef TCITEMA uTCITEM;
 int SHARED_EXPORT uTabCtrl_InsertItem(HWND wnd,t_size idx,const uTCITEM * item);
 int SHARED_EXPORT uTabCtrl_SetItem(HWND wnd,t_size idx,const uTCITEM * item);
 
 int SHARED_EXPORT uGetKeyNameText(LONG lparam,pfc::string_base & out);
 
-void SHARED_EXPORT uFixAmpersandChars(const char * src,pfc::string_base & out);//for systray
+void SHARED_EXPORT uFixAmpersandChars(const char * src,pfc::string_base & out);//for notification area icon
 void SHARED_EXPORT uFixAmpersandChars_v2(const char * src,pfc::string_base & out);//for other controls
 
 //deprecated
 t_size SHARED_EXPORT uPrintCrashInfo(LPEXCEPTION_POINTERS param,const char * extrainfo,char * out);
 enum {uPrintCrashInfo_max_length = 1024};
 
-void SHARED_EXPORT uPrintCrashInfo_Init(const char * name);//called only by exe on startup
-void SHARED_EXPORT uPrintCrashInfo_AddInfo(const char * p_info);//called only by exe on startup
-void SHARED_EXPORT uPrintCrashInfo_SetDumpPath(const char * name);//called only by exe on startup
-
+void SHARED_EXPORT uPrintCrashInfo_Init(const char * name);//called only by the exe on startup
+void SHARED_EXPORT uPrintCrashInfo_SetComponentList(const char * p_info);//called only by the exe on startup
+void SHARED_EXPORT uPrintCrashInfo_AddEnvironmentInfo(const char * p_info);//called only by the exe on startup
+void SHARED_EXPORT uPrintCrashInfo_SetDumpPath(const char * name);//called only by the exe on startup
 
 void SHARED_EXPORT uDumpCrashInfo(LPEXCEPTION_POINTERS param);
+
+
+
+void SHARED_EXPORT uPrintCrashInfo_OnEvent(const char * message, t_size length);
 
 BOOL SHARED_EXPORT uListBox_GetText(HWND listbox,UINT index,pfc::string_base & out);
 
@@ -390,9 +389,6 @@ public:
 #define uGetDlgItemInt GetDlgItemInt
 #define uSetDlgItemInt SetDlgItemInt
 
-#define _uHookWindowProc(WND,PROC) ((WNDPROC)SetWindowLongPtr(WND,GWLP_WNDPROC,(LONG_PTR)(PROC)))
-static WNDPROC uHookWindowProc(HWND p_wnd,WNDPROC p_proc) {return _uHookWindowProc(p_wnd,p_proc);}
-
 #define uSendMessage SendMessage
 #define uSendDlgItemMessage SendDlgItemMessage
 #define uSendMessageTimeout SendMessageTimeout
@@ -456,6 +452,26 @@ namespace pfc {
 		}
 	};
 }
+
+static int uExceptFilterProc_inline(LPEXCEPTION_POINTERS param) {
+	uDumpCrashInfo(param);
+	TerminateProcess(GetCurrentProcess(), 0);
+	return 0;// never reached
+}
+
+#if !defined(FOOBAR2000_TARGET_VERSION) || FOOBAR2000_TARGET_VERSION >= 76
+extern "C" {
+	LONG SHARED_EXPORT uExceptFilterProc(LPEXCEPTION_POINTERS param);
+	PFC_NORETURN void SHARED_EXPORT uBugCheck();
+}
+#else
+#define uExceptFilterProc uExceptFilterProc_inline
+#define uBugCheck() {throw pfc::exception_bug_check_v2(msg);}
+#endif
+
+#define __except_instacrash __except(uExceptFilterProc(GetExceptionInformation()))
+#define fb2k_instacrash_scope(X) __try { X; } __except_instacrash {}
+
 
 #if 1
 #define TRACK_CALL(X) uCallStackTracker TRACKER__##X(#X)
@@ -545,31 +561,40 @@ struct t_font_description
 	t_uint8 m_charset;
 	char m_facename[m_facename_length];
 
+	bool operator==(const t_font_description & other) const {return g_equals(*this, other);}
+	bool operator!=(const t_font_description & other) const {return !g_equals(*this, other);}
+	
+	static bool g_equals(const t_font_description & v1, const t_font_description & v2) {
+		return v1.m_height == v2.m_height && v1.m_weight == v2.m_weight && v1.m_italic == v2.m_italic && v1.m_charset == v2.m_charset && pfc::strcmp_ex(v1.m_facename, m_facename_length, v2.m_facename, m_facename_length) == 0;
+	}
+
 	HFONT SHARED_EXPORT create() const;
 	bool SHARED_EXPORT popup_dialog(HWND p_parent);
 	void SHARED_EXPORT from_font(HFONT p_font);
 	static t_font_description SHARED_EXPORT g_from_font(HFONT p_font);
+	static t_font_description SHARED_EXPORT g_from_logfont(LOGFONT const & lf);
+	static t_font_description SHARED_EXPORT g_from_system(int id = TMT_MENUFONT);
 
 	template<typename t_stream,typename t_abort> void to_stream(t_stream p_stream,t_abort & p_abort) const;
 	template<typename t_stream,typename t_abort> void from_stream(t_stream p_stream,t_abort & p_abort);
 };
 
-template<typename t_stream,typename t_abort> void t_font_description::to_stream(t_stream p_stream,t_abort & p_abort) const {
+/* relevant types not yet defined here */ template<typename t_stream,typename t_abort> void t_font_description::to_stream(t_stream p_stream,t_abort & p_abort) const {
 	p_stream->write_lendian_t(m_height,p_abort);
 	p_stream->write_lendian_t(m_weight,p_abort);
 	p_stream->write_lendian_t(m_italic,p_abort);
 	p_stream->write_lendian_t(m_charset,p_abort);
-	p_stream->write_string(m_facename,tabsize(m_facename),p_abort);
+	p_stream->write_string(m_facename,PFC_TABSIZE(m_facename),p_abort);
 }
 
-template<typename t_stream,typename t_abort> void t_font_description::from_stream(t_stream p_stream,t_abort & p_abort) {
+/* relevant types not yet defined here */ template<typename t_stream,typename t_abort> void t_font_description::from_stream(t_stream p_stream,t_abort & p_abort) {
 	p_stream->read_lendian_t(m_height,p_abort);
 	p_stream->read_lendian_t(m_weight,p_abort);
 	p_stream->read_lendian_t(m_italic,p_abort);
 	p_stream->read_lendian_t(m_charset,p_abort);
 	pfc::string8 temp;
 	p_stream->read_string(temp,p_abort);
-	strncpy_s(m_facename,temp,tabsize(m_facename));
+	strncpy_s(m_facename,temp,PFC_TABSIZE(m_facename));
 }
 
 
@@ -587,6 +612,12 @@ extern "C" {
 	HWND SHARED_EXPORT FindOwningPopup(HWND p_wnd);
 	void SHARED_EXPORT PokeWindow(HWND p_wnd);
 };
+
+static bool ModalDialogPrologue() {
+	bool rv = ModalDialog_CanCreateNew();
+	if (!rv) ModalDialog_PokeExisting();
+	return rv;
+}
 
 //! The purpose of modal_dialog_scope is to help to avoid the modal dialog recursion problem. Current toplevel modal dialog handle is stored globally, so when creation of a new modal dialog is blocked, it can be activated to indicate the reason for the task being blocked.
 class modal_dialog_scope {
@@ -635,9 +666,19 @@ private:
 	bool m_initialized;
 };
 
+class LastErrorRevertScope {
+public:
+	LastErrorRevertScope() : m_val(GetLastError()) {}
+	~LastErrorRevertScope() {SetLastError(m_val);}
+
+private:
+	const DWORD m_val;
+};
+
 class format_win32_error {
 public:
 	format_win32_error(DWORD p_code) {
+		LastErrorRevertScope revert;
 		if (p_code == 0) m_buffer = "Undefined error";
 		else if (!uFormatSystemErrorMessage(m_buffer,p_code)) m_buffer << "Unknown error code (" << (unsigned)p_code << ")";
 	}
@@ -646,6 +687,24 @@ public:
 	operator const char*() const {return m_buffer.get_ptr();}
 private:
 	pfc::string8 m_buffer;
+};
+
+class format_hresult {
+public:
+	format_hresult(HRESULT p_code) {
+		if (!uFormatSystemErrorMessage(m_buffer,(DWORD)p_code)) m_buffer = "Unknown error code";
+		stamp_hex(p_code);
+	}
+	format_hresult(HRESULT p_code, const char * msgOverride) {
+		m_buffer = msgOverride;
+		stamp_hex(p_code);
+	}
+
+	const char * get_ptr() const {return m_buffer.get_ptr();}
+	operator const char*() const {return m_buffer.get_ptr();}
+private:
+	void stamp_hex(HRESULT p_code) {m_buffer << " (0x" << pfc::format_hex((t_uint32)p_code, 8) << ")";}
+	pfc::string_formatter m_buffer;
 };
 
 struct exception_win32 : public std::exception {
@@ -785,4 +844,18 @@ public:
 	TPtr m_ptr;
 	PFC_CLASS_NOT_COPYABLE(CoTaskMemObject, CoTaskMemObject<TPtr> );
 };
+
+
+    
+static void __cdecl _OverrideCrtAbort_handler(int signal) {
+	const ULONG_PTR args[] = {signal};
+	RaiseException(0x6F8E1DC8 /* random GUID */, EXCEPTION_NONCONTINUABLE, _countof(args), args);
+}
+
+static void OverrideCrtAbort() {
+	const int signals[] = {SIGINT, SIGTERM, SIGBREAK, SIGABRT};
+	for(size_t i=0; i<_countof(signals); i++) signal(signals[i], _OverrideCrtAbort_handler);
+	_set_abort_behavior(0, ~0);
+}
+
 #endif //_SHARED_DLL__SHARED_H_

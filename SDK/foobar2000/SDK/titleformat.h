@@ -4,7 +4,7 @@ namespace titleformat_inputtypes {
 
 class NOVTABLE titleformat_text_out {
 public:
-	virtual void write(const GUID & p_inputtype,const char * p_data,t_size p_data_length = infinite) = 0;
+	virtual void write(const GUID & p_inputtype,const char * p_data,t_size p_data_length = ~0) = 0;
 	void write_int(const GUID & p_inputtype,t_int64 val);
 	void write_int_padded(const GUID & p_inputtype,t_int64 val,t_int64 maxval);
 protected:
@@ -175,12 +175,12 @@ public:
 	
 	bool process_field(titleformat_text_out * p_out,const char * p_name,t_size p_name_length,bool & p_found_flag) {
 		if (
-			stricmp_utf8_ex(p_name,p_name_length,"list_index",infinite) == 0
+			stricmp_utf8_ex(p_name,p_name_length,"list_index",~0) == 0
 			) {
 			p_out->write_int_padded(titleformat_inputtypes::unknown,m_index+1, m_total);
 			p_found_flag = true; return true;
 		} else if (
-			stricmp_utf8_ex(p_name,p_name_length,"list_total",infinite) == 0
+			stricmp_utf8_ex(p_name,p_name_length,"list_total",~0) == 0
 			) {
 			p_out->write_int(titleformat_inputtypes::unknown,m_total);
 			p_found_flag = true; return true;			

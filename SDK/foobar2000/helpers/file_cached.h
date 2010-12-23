@@ -1,9 +1,12 @@
 class file_cached : public file {
 public:
-	static void g_create(service_ptr_t<file> & p_out,service_ptr_t<file> p_base,abort_callback & p_abort, t_size blockSize) {
+	static file::ptr g_create(service_ptr_t<file> p_base,abort_callback & p_abort, t_size blockSize) {
 		service_ptr_t<file_cached> temp = new service_impl_t<file_cached>(blockSize);
 		temp->initialize(p_base,p_abort);
-		p_out = temp.get_ptr();
+		return temp;
+	}
+	static void g_create(service_ptr_t<file> & p_out,service_ptr_t<file> p_base,abort_callback & p_abort, t_size blockSize) {
+		p_out = g_create(p_base, p_abort, blockSize);
 	}
 protected:
 	file_cached(t_size blocksize) {

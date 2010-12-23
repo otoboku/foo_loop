@@ -191,6 +191,7 @@
 				PrecompiledHeaderThrough="foobar2000.h"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
+				DebugInformationFormat="3"
 			/>
 			<Tool
 				Name="VCManagedResourceCompilerTool"
@@ -396,6 +397,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\exceptions.h"
+				>
+			</File>
+			<File
 				RelativePath="file_info.h"
 				>
 			</File>
@@ -425,6 +430,10 @@
 			</File>
 			<File
 				RelativePath="hasher_md5.h"
+				>
+			</File>
+			<File
+				RelativePath=".\http_client.h"
 				>
 			</File>
 			<File
@@ -512,6 +521,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\playback_stream_capture.h"
+				>
+			</File>
+			<File
 				RelativePath="playlist.h"
 				>
 			</File>
@@ -552,6 +565,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\system_time_keeper.h"
+				>
+			</File>
+			<File
 				RelativePath="tag_processor.h"
 				>
 			</File>
@@ -569,6 +586,14 @@
 			</File>
 			<File
 				RelativePath="ui.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ui_edit_context.h"
+				>
+			</File>
+			<File
+				RelativePath=".\ui_element.h"
 				>
 			</File>
 			<File
@@ -613,6 +638,10 @@
 						Optimization="2"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\advconfig.cpp"
+				>
 			</File>
 			<File
 				RelativePath=".\album_art.cpp"
@@ -1800,6 +1829,10 @@
 						Optimization="2"
 					/>
 				</FileConfiguration>
+			</File>
+			<File
+				RelativePath=".\ui_element.cpp"
+				>
 			</File>
 		</Filter>
 	</Files>

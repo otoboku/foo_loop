@@ -98,7 +98,7 @@ public:
 	//! Returns true when signaled, false on timeout
 	static bool g_wait_for(HANDLE p_event,double p_timeout_seconds) {
 		SetLastError(NO_ERROR);
-		DWORD status = WaitForSingleObject(p_event,g_calculate_wait_time(p_timeout_seconds));
+ 		DWORD status = WaitForSingleObject(p_event,g_calculate_wait_time(p_timeout_seconds));
 		switch(status) {
 		case WAIT_FAILED:
 			throw exception_win32(GetLastError());
@@ -221,7 +221,8 @@ private:
 
 class exception_com : public std::exception {
 public:
-	exception_com(HRESULT p_code) : std::exception(format_win32_error(p_code)), m_code(p_code) {}
+	exception_com(HRESULT p_code) : std::exception(format_hresult(p_code)), m_code(p_code) {}
+	exception_com(HRESULT p_code, const char * msg) : std::exception(format_hresult(p_code, msg)), m_code(p_code) {}
 	HRESULT get_code() const {return m_code;}
 private:
 	HRESULT m_code;

@@ -119,11 +119,11 @@ cfg_window_placement::cfg_window_placement(const GUID & p_guid) : cfg_var(p_guid
 }
 
 
-cfg_window_size::cfg_window_size(const GUID & p_guid) : cfg_var(p_guid), m_width(infinite32), m_height(infinite32) {}
+cfg_window_size::cfg_window_size(const GUID & p_guid) : cfg_var(p_guid), m_width(~0), m_height(~0) {}
 
 static BOOL SetWindowSize(HWND p_wnd,unsigned p_x,unsigned p_y)
 {
-	if (p_x != infinite32 && p_y != infinite32)
+	if (p_x != ~0 && p_y != ~0)
 		return SetWindowPos(p_wnd,0,0,0,p_x,p_y,SWP_NOACTIVATE|SWP_NOMOVE|SWP_NOZORDER);
 	else
 		return FALSE;
@@ -165,13 +165,13 @@ bool cfg_window_size::read_from_window(HWND p_wnd)
 		}
 		else
 		{
-			m_width = m_height = infinite32;
+			m_width = m_height = ~0;
 			return false;
 		}
 	}
 	else
 	{
-		m_width = m_height = infinite32;
+		m_width = m_height = ~0;
 		return false;
 	}
 }
@@ -187,7 +187,7 @@ void cfg_window_size::get_data_raw(stream_writer * p_stream,abort_callback & p_a
 			}
 		}
 
-		if (m_width != infinite32 && m_height != infinite32) {
+		if (m_width != ~0 && m_height != ~0) {
 			p_stream->write_lendian_t(m_width,p_abort);
 			p_stream->write_lendian_t(m_height,p_abort);
 		}

@@ -143,8 +143,8 @@ public:
 
 class NOVTABLE ui_selection_manager : public service_base {
 public:
-	//! Retrieves current selection.
-	virtual void get_selection(pfc::list_base_t<metadb_handle_ptr> & p_selection) = 0;
+	//! Retrieves the current selection.
+	virtual void get_selection(metadb_handle_list_ref p_selection) = 0;
 	//! Registers a callback. It is recommended to use ui_selection_callback_impl_base class instead of calling this directly.
 	virtual void register_callback(ui_selection_callback * p_callback) = 0;
 	//! Unregisters a callback. It is recommended to use ui_selection_callback_impl_base class instead of calling this directly.
@@ -158,9 +158,19 @@ public:
 	FB2K_MAKE_SERVICE_INTERFACE_ENTRYPOINT(ui_selection_manager);
 };
 
+//! \since 1.0
+class NOVTABLE ui_selection_manager_v2 : public ui_selection_manager {
+	FB2K_MAKE_SERVICE_INTERFACE(ui_selection_manager_v2, ui_selection_manager)
+public:
+	enum { flag_no_now_playing = 1 };
+	virtual void get_selection(metadb_handle_list_ref out, t_uint32 flags) = 0;
+	virtual GUID get_selection_type(t_uint32 flags) = 0;
+	virtual void register_callback(ui_selection_callback * callback, t_uint32 flags) = 0;
+};
+
 class ui_selection_callback {
 public:
-	virtual void on_selection_changed(const pfc::list_base_const_t<metadb_handle_ptr> & p_selection) = 0;
+	virtual void on_selection_changed(metadb_handle_list_cref p_selection) = 0;
 protected:
 	ui_selection_callback() {}
 	~ui_selection_callback() {}
@@ -182,9 +192,37 @@ protected:
 	}
 
 	//avoid pure virtual function calls in rare cases - provide a dummy implementation
-	void on_selection_changed(const pfc::list_base_const_t<metadb_handle_ptr> & p_selection) {}
+	void on_selection_changed(metadb_handle_list_cref p_selection) {}
 
 	PFC_CLASS_NOT_COPYABLE_EX(ui_selection_callback_impl_base);
+private:
+	bool m_active;
+};
+
+//! \since 1.0
+//! ui_selection_callback implementation helper with autoregistration - do not instantiate statically
+template<unsigned flags>
+class ui_selection_callback_impl_base_ex : public ui_selection_callback {
+protected:
+	enum {
+		ui_selection_flags = flags
+	};
+	ui_selection_callback_impl_base_ex(bool activate = true) : m_active() {ui_selection_callback_activate(activate);}
+	~ui_selection_callback_impl_base_ex() {ui_selection_callback_activate(false);}
+
+	void ui_selection_callback_activate(bool state = true) {
+		if (state != m_active) {
+			m_active = state;
+			static_api_ptr_t<ui_selection_manager_v2> api;
+			if (state) api->register_callback(this, flags);
+			else api->unregister_callback(this);
+		}
+	}
+
+	//avoid pure virtual function calls in rare cases - provide a dummy implementation
+	void on_selection_changed(metadb_handle_list_cref p_selection) {}
+
+	PFC_CLASS_NOT_COPYABLE(ui_selection_callback_impl_base_ex, ui_selection_callback_impl_base_ex<flags>);
 private:
 	bool m_active;
 };

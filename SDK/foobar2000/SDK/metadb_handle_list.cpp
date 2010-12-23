@@ -97,7 +97,7 @@ namespace {
 
 			tfhook_sort myHook;
 			titleformat_hook_impl_splitter hookSplitter(&myHook, m_hook);
-			titleformat_hook * const hookPtr = m_hook ? pfc::safe_cast<titleformat_hook*>(&hookSplitter) : &myHook;
+			titleformat_hook * const hookPtr = m_hook ? pfc::implicit_cast<titleformat_hook*>(&hookSplitter) : &myHook;
 
 			pfc::string8_fastalloc temp; temp.prealloc(512);
 			const t_size total = m_items.get_size();
@@ -383,4 +383,15 @@ t_filesize metadb_handle_list_helper::calc_total_size_ex(metadb_handle_list_cref
 		}
 	}
 	return ret;
+}
+
+bool metadb_handle_list_helper::extract_single_path(metadb_handle_list_cref list, const char * &pathOut) {
+	const t_size total = list.get_count();
+	if (total == 0) return false;
+	const char * path = list[0]->get_path();
+	for(t_size walk = 1; walk < total; ++walk) {
+		if (metadb::path_compare(path, list[walk]->get_path()) != 0) return false;
+	}
+	pathOut	= path;
+	return true;
 }

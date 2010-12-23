@@ -37,9 +37,9 @@ void reorder(reorder_callback & p_callback,const t_size * p_order,t_size p_count
 			t_size prev = n;
 			do
 			{
-				assert(!bit_array_bittable::g_get(done,next));
-				assert(next>n);
-				assert(n<p_count);
+				PFC_ASSERT(!bit_array_bittable::g_get(done,next));
+				PFC_ASSERT(next>n);
+				PFC_ASSERT(n<p_count);
 				p_callback.swap(prev,next);
 				bit_array_bittable::g_set(done,next,true);
 				prev = next;
@@ -66,9 +66,9 @@ void reorder_void(void * data,t_size width,const t_size * order,t_size num,void 
 			t_size prev = n;
 			do
 			{
-				assert(!bit_array_bittable::g_get(done,next));
-				assert(next>n);
-				assert(n<num);
+				PFC_ASSERT(!bit_array_bittable::g_get(done,next));
+				PFC_ASSERT(next>n);
+				PFC_ASSERT(n<num);
 				swapfunc(base+width*prev,base+width*next,width);
 				bit_array_bittable::g_set(done,next,true);
 				prev = next;
@@ -147,7 +147,7 @@ static counter::t_val uniqueVal() {
 #endif
 
 static t_size myrand(t_size count) {
-	static_assert<RAND_MAX == 0x7FFF>();
+	PFC_STATIC_ASSERT( RAND_MAX == 0x7FFF );
 
 	t_uint64 val;
 	val = (t_uint64) rand() | (t_uint64)( (t_uint32)rand() << 16 );

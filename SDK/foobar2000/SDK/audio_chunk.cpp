@@ -112,8 +112,8 @@ namespace {
 
 void audio_chunk::set_data_fixedpoint_ex(const void * source,t_size size,unsigned srate,unsigned nch,unsigned bps,unsigned flags,unsigned p_channel_config)
 {
-	assert( check_exclusive(flags,FLAG_SIGNED|FLAG_UNSIGNED) );
-	assert( check_exclusive(flags,FLAG_LITTLE_ENDIAN|FLAG_BIG_ENDIAN) );
+	PFC_ASSERT( check_exclusive(flags,FLAG_SIGNED|FLAG_UNSIGNED) );
+	PFC_ASSERT( check_exclusive(flags,FLAG_LITTLE_ENDIAN|FLAG_BIG_ENDIAN) );
 
 	bool need_swap = !!(flags & FLAG_BIG_ENDIAN);
 	if (pfc::byte_order_is_big_endian) need_swap = !need_swap;
@@ -168,9 +168,9 @@ static void process_float_multi_swap(audio_sample * p_out,const t_float * p_in,c
 
 void audio_chunk::set_data_floatingpoint_ex(const void * ptr,t_size size,unsigned srate,unsigned nch,unsigned bps,unsigned flags,unsigned p_channel_config)
 {
-	assert(bps==32 || bps==64);
-	assert( check_exclusive(flags,FLAG_LITTLE_ENDIAN|FLAG_BIG_ENDIAN) );
-	assert( ! (flags & (FLAG_SIGNED|FLAG_UNSIGNED) ) );
+	PFC_ASSERT(bps==32 || bps==64);
+	PFC_ASSERT( check_exclusive(flags,FLAG_LITTLE_ENDIAN|FLAG_BIG_ENDIAN) );
+	PFC_ASSERT( ! (flags & (FLAG_SIGNED|FLAG_UNSIGNED) ) );
 
 	bool use_swap = pfc::byte_order_is_big_endian ? !!(flags & FLAG_LITTLE_ENDIAN) : !!(flags & FLAG_BIG_ENDIAN);
 
@@ -245,6 +245,12 @@ void audio_chunk::pad_with_silence(t_size samples) {
 	}
 }
 
+void audio_chunk::set_silence(t_size samples) {
+	t_size items = samples * get_channels();
+	set_data_size(items);
+	pfc::memset_null_t(get_data(), items);
+	set_sample_count(samples);
+}
 void audio_chunk::insert_silence_fromstart(t_size samples) {
 	t_size old_size = get_sample_count() * get_channels();
 	t_size delta = samples * get_channels();
@@ -325,7 +331,7 @@ bool audio_chunk::to_raw_data(mem_block_container & out, t_uint32 bps) const {
 			render_24bit(get_data(), dataLen, out.get_ptr());
 			break;
 		case 32:
-			pfc::static_assert<sizeof(audio_sample) == 4>();
+			PFC_STATIC_ASSERT( sizeof(audio_sample) == 4 );
 			out.set(get_data(), dataLen * sizeof(audio_sample));
 			break;
 		default:

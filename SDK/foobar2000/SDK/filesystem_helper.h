@@ -46,6 +46,22 @@ private:
 	t_size m_offset;
 };
 
+class reader_membuffer_simple : public reader_membuffer_base {
+public:
+	reader_membuffer_simple(const void * ptr, t_size size, t_filetimestamp ts = filetimestamp_invalid, bool is_remote = false) {
+		m_data.set_size_discard(size);
+		memcpy(m_data.get_ptr(), ptr, size);
+	}
+	const void * get_buffer() {return m_data.get_ptr();}
+	t_size get_buffer_size() {return m_data.get_size();}
+	t_filetimestamp get_timestamp(abort_callback & p_abort) {return m_ts;}
+	bool is_remote() {return m_isRemote;}
+private:
+	pfc::array_staticsize_t<t_uint8> m_data;
+	t_filetimestamp m_ts;
+	bool m_isRemote;
+};
+
 class reader_membuffer_mirror : public reader_membuffer_base
 {
 public:
@@ -59,13 +75,17 @@ public:
 		p_out = ptr.get_ptr();
 		return true;
 	}
-
+	bool get_content_type(pfc::string_base & out) {
+		if (m_contentType.is_empty()) return false;
+		out = m_contentType; return true;
+	}
 private:
 	const void * get_buffer() {return m_buffer.get_ptr();}
 	t_size get_buffer_size() {return m_buffer.get_size();}
 
 	bool init(const service_ptr_t<file> & p_src,abort_callback & p_abort) {
 		if (p_src->is_in_memory()) return false;//already buffered
+		if (!p_src->get_content_type(m_contentType)) m_contentType.reset();
 		m_remote = p_src->is_remote();
 		
 		t_size size = pfc::downcast_guarded<t_size>(p_src->get_size(p_abort));
@@ -85,6 +105,7 @@ private:
 	t_filetimestamp m_timestamp;
 	pfc::array_t<char> m_buffer;
 	bool m_remote;
+	pfc::string8 m_contentType;
 
 };
 
@@ -162,16 +183,36 @@ public:
 	}
 
 	t_size read(void * p_buffer,t_size p_bytes,abort_callback & p_abort) {
-		t_size remaining = m_data_size - m_pointer;
-		t_size toread = p_bytes;
-		if (toread > remaining) toread = remaining;
-		if (toread > 0) {
-			memcpy(p_buffer,m_data+m_pointer,toread);
-			m_pointer += toread;
-		}
-
-		return toread;
+		t_size delta = pfc::min_t(p_bytes, get_remaining());
+		memcpy(p_buffer,m_data+m_pointer,delta);
+		m_pointer += delta;
+		return delta;
 	}
+	void read_object(void * p_buffer,t_size p_bytes,abort_callback & p_abort) {
+		if (p_bytes > get_remaining()) throw exception_io_data_truncation();
+		memcpy(p_buffer,m_data+m_pointer,p_bytes);
+		m_pointer += p_bytes;
+	}
+	t_filesize skip(t_filesize p_bytes,abort_callback & p_abort) {
+		t_size remaining = get_remaining();
+		if (p_bytes >= remaining) {
+			m_pointer = m_data_size; return remaining;
+		} else {
+			m_pointer += (t_size)p_bytes; return p_bytes;
+		}
+	}
+	void skip_object(t_filesize p_bytes,abort_callback & p_abort) {
+		if (p_bytes > get_remaining()) {
+			throw exception_io_data_truncation();
+		} else {
+			m_pointer += (t_size)p_bytes;
+		}
+	}
+	void seek_(t_size offset) {
+		PFC_ASSERT( offset <= m_data_size );
+		m_pointer = offset;
+	}
+	const void * get_ptr_() const {return m_data + m_pointer;}
 	t_size get_remaining() const {return m_data_size - m_pointer;}
 	void reset() {m_pointer = 0;}
 private:
@@ -200,7 +241,7 @@ class stream_writer_buffer_append_ref_t : public stream_writer
 public:
 	stream_writer_buffer_append_ref_t(t_storage & p_output) : m_output(p_output) {}
 	void write(const void * p_buffer,t_size p_bytes,abort_callback & p_abort) {
-		pfc::static_assert< sizeof(m_output[0]) == 1>();
+		PFC_STATIC_ASSERT( sizeof(m_output[0]) == 1 );
 		p_abort.check();
 		t_size base = m_output.get_size();
 		if (base + p_bytes < base) throw std::bad_alloc();
@@ -481,14 +522,7 @@ FB2K_STREAM_WRITER_OVERLOAD(pfc::string) {
 }
 
 FB2K_STREAM_READER_OVERLOAD(pfc::string_base) {
-	t_uint32 len; stream >> len;
-	try {
-		char * buf = value.lock_buffer(len);
-		stream.read_raw(buf,len);
-	} catch(...) {
-		value.unlock_buffer(); throw;
-	}
-	value.unlock_buffer();
+	stream.m_stream.read_string(value, stream.m_abort);
 	return stream;
 }
 FB2K_STREAM_WRITER_OVERLOAD(pfc::string_base) {
@@ -526,6 +560,14 @@ FB2K_STREAM_READER_OVERLOAD(double) {
 	return stream;
 }
 
+FB2K_STREAM_WRITER_OVERLOAD(bool) {
+	t_uint8 temp = value ? 1 : 0;
+	return stream << temp;
+}
+FB2K_STREAM_READER_OVERLOAD(bool) {
+	t_uint8 temp; stream >> temp; value = temp != 0;
+	return stream;
+}
 
 template<bool BE = false>
 class stream_writer_formatter_simple : public stream_writer_formatter<BE> {
@@ -551,6 +593,8 @@ public:
 
 	void reset() {_m_stream.reset();}
 	t_size get_remaining() {return _m_stream.get_remaining();}
+
+	const void * get_ptr_() const {return _m_stream.get_ptr_();}
 private:
 	stream_reader_memblock_ref _m_stream;
 	abort_callback_dummy _m_abort;
@@ -577,3 +621,46 @@ private:
 	}
 	pfc::array_t<t_uint8> m_content;
 };
+
+
+
+
+
+
+template<bool isBigEndian> class _stream_reader_formatter_translator {
+public:
+	_stream_reader_formatter_translator(stream_reader_formatter<isBigEndian> & stream) : m_stream(stream) {}
+	typedef _stream_reader_formatter_translator<isBigEndian> t_self;
+	template<typename t_what> t_self & operator||(t_what & out) {m_stream >> out; return *this;}
+private:
+	stream_reader_formatter<isBigEndian> & m_stream;
+};
+template<bool isBigEndian> class _stream_writer_formatter_translator {
+public:
+	_stream_writer_formatter_translator(stream_writer_formatter<isBigEndian> & stream) : m_stream(stream) {}
+	typedef _stream_writer_formatter_translator<isBigEndian> t_self;
+	template<typename t_what> t_self & operator||(const t_what & in) {m_stream << in; return *this;}
+private:
+	stream_writer_formatter<isBigEndian> & m_stream;
+};
+
+#define FB2K_STREAM_RECORD_OVERLOAD(type, code) \
+	FB2K_STREAM_READER_OVERLOAD(type) {	\
+		_stream_reader_formatter_translator<isBigEndian> streamEx(stream);	\
+		streamEx || code;	\
+		return stream; \
+	}	\
+	FB2K_STREAM_WRITER_OVERLOAD(type) {	\
+		_stream_writer_formatter_translator<isBigEndian> streamEx(stream);	\
+		streamEx || code;	\
+		return stream;	\
+	}
+
+
+
+
+#define FB2K_RETRY_ON_SHARING_VIOLATION(OP, ABORT, TIMEOUT) \
+	{	\
+		pfc::lores_timer timer; timer.start();	\
+		for(;;) try { {OP;} break; } catch(exception_io_sharing_violation) { if (timer.query() > TIMEOUT) throw; ABORT.sleep(0.01); }	\
+	}

@@ -26,6 +26,8 @@ public:
 	bool get_dynamic_info(file_info & p_out,double & p_timestamp_delta);
 	bool get_dynamic_info_track(file_info & p_out,double & p_timestamp_delta);
 	void set_logger(event_logger::ptr ptr);
+	void set_pause(bool state);
+	bool flush_on_pause();
 
 	//! Retrieves path of currently open file.
 	const char * get_path() const;

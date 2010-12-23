@@ -66,9 +66,13 @@ private:
 #endif
 };
 
-//! Dummy abort_callback that never gets aborted. To be possibly optimized in the future.
-typedef abort_callback_impl abort_callback_dummy;
+//! Dummy abort_callback that never gets aborted. Slightly more efficient than the regular one especially when you need to regularly create temporary instances of it.
+class abort_callback_dummy : public abort_callback {
+public:
+	bool is_aborting() const { return false; }
 
+	abort_callback_event get_abort_event() const { return GetInfiniteWaitEvent();}
+};
 }
 
 using namespace foobar2000_io;

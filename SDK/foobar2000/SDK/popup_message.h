@@ -18,12 +18,12 @@ public:
 	//! @param p_msg Message to show (UTF-8 encoded string).
 	//! @param p_title Title of dialog to show (UTF-8 encoded string).
 	//! @param p_icon Icon of the dialog - can be set to icon_information, icon_error or icon_query.
-	inline void show(const char * p_msg,const char * p_title,t_icon p_icon = icon_information) {show_ex(p_msg,infinite,p_title,infinite,p_icon);}
+	inline void show(const char * p_msg,const char * p_title,t_icon p_icon = icon_information) {show_ex(p_msg,~0,p_title,~0,p_icon);}
 
 	//! Static helper function instantiating the service and activating the message dialog. See show_ex() for description of parameters.
 	static void g_show_ex(const char * p_msg,unsigned p_msg_length,const char * p_title,unsigned p_title_length,t_icon p_icon = icon_information);
 	//! Static helper function instantiating the service and activating the message dialog. See show() for description of parameters.
-	static inline void g_show(const char * p_msg,const char * p_title,t_icon p_icon = icon_information) {g_show_ex(p_msg,infinite,p_title,infinite,p_icon);}
+	static inline void g_show(const char * p_msg,const char * p_title,t_icon p_icon = icon_information) {g_show_ex(p_msg,~0,p_title,~0,p_icon);}
 
 	static void g_complain(const char * what) {
 		g_show(what, "Information", icon_error);

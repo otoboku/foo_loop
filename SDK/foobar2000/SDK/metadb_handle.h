@@ -31,10 +31,10 @@ public:
 	//! Returns last seen file stats, filestats_invalid if unknown.
 	virtual t_filestats get_filestats() const = 0;
 
-	//! Queries whether cached info about item referenced by this metadb_handle object is already available.\n
+	//! Queries whether cached info about item referenced by this metadb_handle object is already available. Note that this function causes the metadb to be temporarily locked; you can not use it in context that where locking is forbidden.\n
 	//! Note that state of cached info changes only inside main thread, so you can safely assume that it doesn't change while some block of your code inside main thread is being executed.
 	virtual bool is_info_loaded() const = 0;
-	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known.\n
+	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known. Note that this function causes the metadb to be temporarily locked; you can not use it in context that where locking is forbidden. \n
 	//! Note that state of cached info changes only inside main thread, so you can safely assume that it doesn't change while some block of your code inside main thread is being executed.
 	virtual bool get_info(file_info & p_info) const = 0;
 	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known. This is more efficient than get_info() since no data is copied.\n
@@ -46,7 +46,7 @@ public:
 	//! Queries whether cached info about item referenced by this metadb_handle object is already available.\n
 	//! This is intended for use in special cases when you need to immediately retrieve info sent by metadb_io hint from another thread; state of returned data can be altered by any thread, as opposed to non-async methods.
 	virtual bool is_info_loaded_async() const = 0;	
-	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known.\n
+	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known. Note that this function causes the metadb to be temporarily locked; you can not use it in context that where locking is forbidden.\n
 	//! This is intended for use in special cases when you need to immediately retrieve info sent by metadb_io hint from another thread; state of returned data can be altered by any thread, as opposed to non-async methods.
 	virtual bool get_info_async(file_info & p_info) const = 0;	
 	//! Queries cached info about item referenced by this metadb_handle object. Returns true on success, false when info is not yet known. This is more efficient than get_info() since no data is copied.\n
@@ -66,6 +66,14 @@ public:
 	//! New in 0.9.5.
 	virtual void format_title_from_external_info_nonlocking(const file_info & p_info,titleformat_hook * p_hook,pfc::string_base & p_out,const service_ptr_t<class titleformat_object> & p_script,titleformat_text_filter * p_filter) = 0;
 	
+#if FOOBAR2000_TARGET_VERSION >= 76
+	//! New in 1.0
+	virtual bool get_browse_info(file_info & info, t_filetimestamp & ts) const = 0;
+
+	//! New in 1.0
+	virtual bool get_browse_info_locked(const file_info * & p_info, t_filetimestamp & ts) const = 0;
+#endif
+
 	static bool g_should_reload(const t_filestats & p_old_stats,const t_filestats & p_new_stats,bool p_fresh);
 	bool should_reload(const t_filestats & p_new_stats,bool p_fresh) const;
 	
@@ -115,6 +123,8 @@ namespace metadb_handle_list_helper {
 
 	t_filesize calc_total_size(metadb_handle_list_cref list, bool skipUnknown = false);
 	t_filesize calc_total_size_ex(metadb_handle_list_cref list, bool & foundUnknown);
+
+	bool extract_single_path(metadb_handle_list_cref list, const char * &path);
 };
 
 template<template<typename> class t_alloc = pfc::alloc_fast >
@@ -163,6 +173,8 @@ public:
 
 	t_self & operator+=(const t_interface & source) {add_items(source); return *this;}
 	t_self & operator+=(const metadb_handle_ptr & source) {add_item(source); return *this;}
+
+	bool extract_single_path(const char * &path) const {return metadb_handle_list_helper::extract_single_path(*this, path);}
 };
 
 typedef metadb_handle_list_t<> metadb_handle_list;

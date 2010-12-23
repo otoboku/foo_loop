@@ -122,11 +122,15 @@ namespace pfc { void myassert(const wchar_t * _Message, const wchar_t *_File, un
 #endif
 
 #define PFC_DEPRECATE(X) __declspec(deprecated(X))
+#define PFC_NORETURN __declspec(noreturn)
+#define PFC_NOINLINE __declspec(noinline)
 #else
 
 #define NOVTABLE
-#define ASSUME(X) assert(X)
+#define ASSUME(X) PFC_ASSERT(X)
 #define PFC_DEPRECATE(X)
+#define PFC_NORETURN
+#define PFC_NOINLINE
 
 #endif
 
@@ -150,6 +154,7 @@ namespace pfc { void myassert(const wchar_t * _Message, const wchar_t *_File, un
 #include "iterators.h"
 #include "avltree.h"
 #include "map.h"
+#include "bit_array_impl_part2.h"
 #include "profiler.h"
 #include "guid.h"
 #include "byte_order_helper.h"
@@ -162,5 +167,6 @@ namespace pfc { void myassert(const wchar_t * _Message, const wchar_t *_File, un
 #include "pathUtils.h"
 #include "instance_tracker.h"
 #include "threads.h"
+#include "base64.h"
 
 #endif //___PFC_H___

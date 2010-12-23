@@ -338,7 +338,7 @@ public:
 	t_size find_or_create_playlist(const char * p_name,t_size p_name_length = ~0);
 	t_size find_or_create_playlist_unlocked(const char * p_name,t_size p_name_length = ~0);
 
-	t_size create_playlist_autoname(t_size p_index = infinite);
+	t_size create_playlist_autoname(t_size p_index = ~0);
 
 	bool activeplaylist_sort_by_format(const char * spec,bool p_sel_only);
 
@@ -431,8 +431,8 @@ public:
 	//! \param p_property GUID that identifies the property
 	//! \param p_data array that contains the data that will be associated with the property
 	template<typename t_array> void playlist_set_property(t_size p_playlist,const GUID & p_property,const t_array & p_data) {
-		pfc::static_assert<sizeof(p_data[0]) == 1>();
-		playlist_set_property(p_playlist,p_property,&stream_reader_memblock_ref(p_data),p_data.get_size(),abort_callback_impl());
+		PFC_STATIC_ASSERT( sizeof(p_data[0]) == 1 );
+		playlist_set_property(p_playlist,p_property,&stream_reader_memblock_ref(p_data),p_data.get_size(),abort_callback_dummy());
 	}
 	//! Read a persistent playlist property.
 	//! \param p_playlist Index of the playlist
@@ -440,10 +440,10 @@ public:
 	//! \param p_data array that will receive the stored data
 	//! \return true if the property exists, false otherwise
 	template<typename t_array> bool playlist_get_property(t_size p_playlist,const GUID & p_property,t_array & p_data) {
-		pfc::static_assert<sizeof(p_data[0]) == 1>();
+		PFC_STATIC_ASSERT( sizeof(p_data[0]) == 1 );
 		typedef pfc::array_t<t_uint8,pfc::alloc_fast_aggressive> t_temp;
 		t_temp temp;
-		if (!playlist_get_property(p_playlist,p_property,&stream_writer_buffer_append_ref_t<t_temp>(temp),abort_callback_impl())) return false;
+		if (!playlist_get_property(p_playlist,p_property,&stream_writer_buffer_append_ref_t<t_temp>(temp),abort_callback_dummy())) return false;
 		p_data = temp;
 		return true;
 	}

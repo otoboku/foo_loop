@@ -49,9 +49,11 @@ bool IsMenuNonEmpty(HMENU menu) {
 	return false;
 }
 
-void WIN32_OP_FAIL() {
-	PFC_ASSERT( GetLastError() != NO_ERROR );
-	throw exception_win32(GetLastError());
+PFC_NORETURN PFC_NOINLINE void WIN32_OP_FAIL() {
+	const DWORD code = GetLastError();
+	PFC_ASSERT( code != NO_ERROR );
+	pfc::string_fixed_t<32> debugMsg; debugMsg << "Win32 error #" << (t_uint32)code;
+	TRACK_CODE( debugMsg, throw exception_win32(code) );
 }
 
 #ifdef _DEBUG
@@ -68,3 +70,65 @@ void WIN32_OP_D_FAIL(const wchar_t * _Message, const wchar_t *_File, unsigned _L
 	_wassert(msgFormatted.get_ptr(),_File,_Line);
 }
 #endif
+
+
+void GetOSVersionString(pfc::string_base & out) {
+	out.reset(); GetOSVersionStringAppend(out);
+}
+
+static bool running_under_wine(void) {
+    HMODULE module = GetModuleHandle(_T("ntdll.dll"));
+    if (!module) return false;
+    return GetProcAddress(module, "wine_server_call") != NULL;
+}
+static bool FetchWineInfoAppend(pfc::string_base & out) {
+	typedef const char *(__cdecl *t_wine_get_build_id)(void);
+    typedef void (__cdecl *t_wine_get_host_version)( const char **sysname, const char **release );
+	const HMODULE ntdll = GetModuleHandle(_T("ntdll.dll"));
+	if (ntdll == NULL) return false;
+	t_wine_get_build_id wine_get_build_id;
+	t_wine_get_host_version wine_get_host_version;
+    wine_get_build_id = (t_wine_get_build_id)GetProcAddress(ntdll, "wine_get_build_id");
+    wine_get_host_version = (t_wine_get_host_version)GetProcAddress(ntdll, "wine_get_host_version");
+	if (wine_get_build_id == NULL || wine_get_host_version == NULL) {
+		if (GetProcAddress(ntdll, "wine_server_call") != NULL) {
+			out << "wine (unknown version)";
+			return true;
+		}
+		return false;
+	}
+	const char * sysname = NULL; const char * release = NULL;
+	wine_get_host_version(&sysname, &release);
+	out << wine_get_build_id() << ", on: " << sysname << " / " << release;
+	return true;
+}
+void GetOSVersionStringAppend(pfc::string_base & out) {
+
+	if (FetchWineInfoAppend(out)) return;
+
+	OSVERSIONINFO ver = {}; ver.dwOSVersionInfoSize = sizeof(ver);
+	WIN32_OP( GetVersionEx(&ver) );
+	SYSTEM_INFO info = {};
+	GetNativeSystemInfo(&info);
+	
+	out << "Windows " << (int)ver.dwMajorVersion << "." << (int)ver.dwMinorVersion << "." << (int)ver.dwBuildNumber;
+	if (ver.szCSDVersion[0] != 0) out << " " << pfc::stringcvt::string_utf8_from_os(ver.szCSDVersion, PFC_TABSIZE(ver.szCSDVersion));
+	
+	switch(info.wProcessorArchitecture) {
+		case PROCESSOR_ARCHITECTURE_AMD64:
+			out << " x64"; break;
+		case PROCESSOR_ARCHITECTURE_IA64:
+			out << " IA64"; break;
+		case PROCESSOR_ARCHITECTURE_INTEL:
+			out << " x86"; break;
+	}
+}
+
+
+void SetDefaultMenuItem(HMENU p_menu,unsigned p_id) {
+	MENUITEMINFO info = {sizeof(info)};
+	info.fMask = MIIM_STATE;
+	GetMenuItemInfo(p_menu,p_id,FALSE,&info);
+	info.fState |= MFS_DEFAULT;
+	SetMenuItemInfo(p_menu,p_id,FALSE,&info);
+}

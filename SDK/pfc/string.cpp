@@ -122,7 +122,7 @@ string_extension::string_extension(const char * src)
 	{
 		ptr++;
 		t_size len = end-ptr;
-		if (len<tabsize(buffer))
+		if (len<PFC_TABSIZE(buffer))
 		{
 			memcpy(buffer,ptr,len*sizeof(char));
 			buffer[len]=0;
@@ -418,7 +418,7 @@ format_float::format_float(double p_val,unsigned p_width,unsigned p_prec)
 	m_buffer += temp;
 }
 
-static char format_hex_char(unsigned p_val)
+char format_hex_char(unsigned p_val)
 {
 	PFC_ASSERT(p_val < 16);
 	return (p_val < 10) ? p_val + '0' : p_val - 10 + 'A';
@@ -446,7 +446,7 @@ format_hex::format_hex(t_uint64 p_val,unsigned p_width)
 	*out = 0;
 }
 
-static char format_hex_char_lowercase(unsigned p_val)
+char format_hex_char_lowercase(unsigned p_val)
 {
 	PFC_ASSERT(p_val < 16);
 	return (p_val < 10) ? p_val + '0' : p_val - 10 + 'a';
@@ -477,7 +477,7 @@ format_hex_lowercase::format_hex_lowercase(t_uint64 p_val,unsigned p_width)
 format_uint::format_uint(t_uint64 val,unsigned p_width,unsigned p_base)
 {
 	
-	enum {max_width = tabsize(m_buffer) - 1};
+	enum {max_width = PFC_TABSIZE(m_buffer) - 1};
 
 	if (p_width > max_width) p_width = max_width;
 	else if (p_width == 0) p_width = 1;
@@ -520,7 +520,7 @@ format_int::format_int(t_int64 p_val,unsigned p_width,unsigned p_base)
 	if (p_val < 0) {neg = true; val = (t_uint64)(-p_val);}
 	else val = (t_uint64)p_val;
 	
-	enum {max_width = tabsize(m_buffer) - 1};
+	enum {max_width = PFC_TABSIZE(m_buffer) - 1};
 
 	if (p_width > max_width) p_width = max_width;
 	else if (p_width == 0) p_width = 1;
@@ -592,7 +592,10 @@ string_replace_extension::string_replace_extension(const char * p_path,const cha
 string_directory::string_directory(const char * p_path)
 {
 	t_size ptr = scan_filename(p_path);
-	if (ptr > 0) m_data.set_string(p_path,ptr-1);
+	if (ptr > 1) {
+		if (is_path_separator(p_path[ptr-1]) && !is_path_separator(p_path[ptr-2])) --ptr;
+	}
+	m_data.set_string(p_path,ptr);
 }
 
 t_size scan_filename(const char * ptr)
@@ -609,20 +612,26 @@ t_size scan_filename(const char * ptr)
 
 
 t_size string_find_first(const char * p_string,char p_tofind,t_size p_start) {
-	return string_find_first_ex(p_string,infinite,&p_tofind,1,p_start);
+	for(t_size walk = p_start; p_string[walk]; ++walk) {
+		if (p_string[walk] == p_tofind) return walk;
+	}
+	return ~0;
 }
 t_size string_find_last(const char * p_string,char p_tofind,t_size p_start) {
-	return string_find_last_ex(p_string,infinite,&p_tofind,1,p_start);
+	return string_find_last_ex(p_string,~0,&p_tofind,1,p_start);
 }
 t_size string_find_first(const char * p_string,const char * p_tofind,t_size p_start) {
-	return string_find_first_ex(p_string,infinite,p_tofind,infinite,p_start);
+	return string_find_first_ex(p_string,~0,p_tofind,~0,p_start);
 }
 t_size string_find_last(const char * p_string,const char * p_tofind,t_size p_start) {
-	return string_find_last_ex(p_string,infinite,p_tofind,infinite,p_start);
+	return string_find_last_ex(p_string,~0,p_tofind,~0,p_start);
 }
 
 t_size string_find_first_ex(const char * p_string,t_size p_string_length,char p_tofind,t_size p_start) {
-	return string_find_first_ex(p_string,p_string_length,&p_tofind,1,p_start);
+	for(t_size walk = p_start; walk < p_string_length && p_string[walk]; ++walk) {
+		if (p_string[walk] == p_tofind) return walk;
+	}
+	return ~0;
 }
 t_size string_find_last_ex(const char * p_string,t_size p_string_length,char p_tofind,t_size p_start) {
 	return string_find_last_ex(p_string,p_string_length,&p_tofind,1,p_start);
@@ -635,7 +644,7 @@ t_size string_find_first_ex(const char * p_string,t_size p_string_length,const c
 			if (_strcmp_partial_ex(p_string+walk,p_string_length-walk,p_tofind,p_tofind_length) == 0) return walk;
 		}
 	}
-	return infinite;
+	return ~0;
 }
 t_size string_find_last_ex(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start) {
 	p_string_length = strlen_max(p_string,p_string_length); p_tofind_length = strlen_max(p_tofind,p_tofind_length);
@@ -645,7 +654,24 @@ t_size string_find_last_ex(const char * p_string,t_size p_string_length,const ch
 			if (_strcmp_partial_ex(p_string+walk,p_string_length-walk,p_tofind,p_tofind_length) == 0) return walk;
 		}
 	}
-	return infinite;
+	return ~0;
+}
+
+t_size string_find_first_nc(const char * p_string,t_size p_string_length,char c,t_size p_start) {
+	for(t_size walk = p_start; walk < p_string_length; walk++) {
+		if (p_string[walk] == c) return walk;
+	}
+	return ~0;
+}
+
+t_size string_find_first_nc(const char * p_string,t_size p_string_length,const char * p_tofind,t_size p_tofind_length,t_size p_start) {
+	if (p_string_length >= p_tofind_length) {
+		t_size max = p_string_length - p_tofind_length;
+		for(t_size walk = p_start; walk <= max; walk++) {
+			if (memcmp(p_string+walk, p_tofind, p_tofind_length) == 0) return walk;
+		}
+	}
+	return ~0;
 }
 
 
@@ -661,7 +687,11 @@ bool string_is_numeric(const char * p_string,t_size p_length) throw() {
 
 void string_base::fix_dir_separator(char p_char) {
 	t_size length = get_length();
-	if (length == 0 || get_ptr()[length-1] != p_char) add_byte(p_char);
+	if (!ends_with(p_char)) add_byte(p_char);
+}
+bool string_base::ends_with(char c) {
+	t_size length = get_length();
+	return length > 0 && get_ptr()[length-1] == c;
 }
 
 bool is_multiline(const char * p_string,t_size p_len) {
@@ -767,7 +797,23 @@ void stringToLowerAppend(string_base & out, const char * src, t_size len) {
 		len-=d;
 	}
 }
-
+int stringCompareCaseInsensitiveEx(string_part_ref s1, string_part_ref s2) {
+	t_size w1 = 0, w2 = 0;
+	for(;;) {
+		unsigned c1, c2; t_size d1, d2;
+		d1 = utf8_decode_char(s1.m_ptr + w1, c1, s1.m_len - w1);
+		d2 = utf8_decode_char(s2.m_ptr + w2, c2, s2.m_len - w2);
+		if (d1 == 0 && d2 == 0) return 0;
+		else if (d1 == 0) return -1;
+		else if (d2 == 0) return 1;
+		else {
+			c1 = charLower(c1); c2 = charLower(c2);
+			if (c1 < c2) return -1;
+			else if (c1 > c2) return 1;
+		}
+		w1 += d1; w2 += d2;
+	}
+}
 int stringCompareCaseInsensitive(const char * s1, const char * s2) {
 	for(;;) {
 		unsigned c1, c2; t_size d1, d2;
@@ -789,7 +835,7 @@ format_file_size_short::format_file_size_short(t_uint64 size) {
 	t_uint64 scale = 1;
 	const char * unit = "B";
 	const char * const unitTable[] = {"B","KB","MB","GB","TB"};
-	for(t_size walk = 1; walk < tabsize(unitTable); ++walk) {
+	for(t_size walk = 1; walk < PFC_TABSIZE(unitTable); ++walk) {
 		t_uint64 next = scale * 1024;
 		if (size < next) break;
 		scale = next; unit = unitTable[walk];
@@ -846,5 +892,39 @@ bool string_base::limit_length(t_size length_in_chars,const char * append)
 	}
 	return rv;
 }
+
+void urlEncodeAppendRaw(pfc::string_base & out, const char * in, t_size inSize) {
+	for(t_size walk = 0; walk < inSize; ++walk) {
+		const char c = in[walk];
+		if (c == ' ') out.add_byte('+');
+		else if (pfc::char_is_ascii_alphanumeric(c) || c == '_') out.add_byte(c);
+		else out << "%" << pfc::format_hex((t_uint8)c, 2);
+	}
+}
+void urlEncodeAppend(pfc::string_base & out, const char * in) {
+	for(;;) {
+		const char c = *(in++);
+		if (c == 0) break;
+		else if (c == ' ') out.add_byte('+');
+		else if (pfc::char_is_ascii_alphanumeric(c) || c == '_') out.add_byte(c);
+		else out << "%" << pfc::format_hex((t_uint8)c, 2);
+	}
+}
+void urlEncode(pfc::string_base & out, const char * in) {
+	out.reset(); urlEncodeAppend(out, in);
+}
+
+unsigned char_to_dec(char c) {
+	if (c >= '0' && c <= '9') return (unsigned)(c - '0');
+	else throw exception_invalid_params();
+}
+
+unsigned char_to_hex(char c) {
+	if (c >= '0' && c <= '9') return (unsigned)(c - '0');
+	else if (c >= 'a' && c <= 'f') return (unsigned)(c - 'a' + 10);
+	else if (c >= 'A' && c <= 'F') return (unsigned)(c - 'A' + 10);
+	else throw exception_invalid_params();
+}
+
 
 } //namespace pfc

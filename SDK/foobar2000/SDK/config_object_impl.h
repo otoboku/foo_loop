@@ -120,8 +120,8 @@ public:
 class config_object_string_factory : public config_object_factory
 {
 public:
-	config_object_string_factory(const GUID & p_guid,const char * p_string,t_size p_string_length = infinite)
-		: config_object_factory(p_guid,p_string,pfc::strlen_max(p_string,infinite)) {}
+	config_object_string_factory(const GUID & p_guid,const char * p_string,t_size p_string_length = ~0)
+		: config_object_factory(p_guid,p_string,pfc::strlen_max(p_string,~0)) {}
 
 };
 

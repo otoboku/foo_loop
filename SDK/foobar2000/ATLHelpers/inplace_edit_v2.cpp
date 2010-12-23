@@ -83,8 +83,10 @@ namespace InPlaceEdit {
 			rc.bottom = rc.top + (rc.bottom - rc.top) * lineCount;
 			m_editFlags |= KFlagMultiLine;
 		}
+		pfc::com_ptr_t<IUnknown> acl;
+		if (!TableEdit_GetAutoComplete(m_editItem, m_editSubItem, acl)) acl.release();
 
-		InPlaceEdit::StartEx(TableEdit_GetParentWnd(), rc, m_editFlags, m_editData, create_task(KTaskID));
+		InPlaceEdit::StartEx(TableEdit_GetParentWnd(), rc, m_editFlags, m_editData, create_task(KTaskID), acl.get_ptr(), ACO_AUTOSUGGEST);
 	}
 
 	void CTableEditHelperV2::on_task_completion(unsigned id, unsigned status) {

@@ -314,13 +314,25 @@ namespace pfc {
 		}
 
 		template<typename t_param>
-		t_storage * __find_item_ptr(t_param const & p_item) const {
+		t_storage * _find_item_ptr(t_param const & p_item) const {
 			t_node* ptr = &*m_root;
 			while(ptr != NULL) {
 				int result = compare(ptr->m_content,p_item);
 				if (result > 0) ptr=&*ptr->m_left;
 				else if (result < 0) ptr=&*ptr->m_right;
 				else return &ptr->m_content;
+			}
+			return NULL;
+		}
+
+		template<typename t_param>
+		t_node * _find_node_ptr(t_param const & p_item) const {
+			t_node* ptr = &*m_root;
+			while(ptr != NULL) {
+				int result = compare(ptr->m_content,p_item);
+				if (result > 0) ptr=&*ptr->m_left;
+				else if (result < 0) ptr=&*ptr->m_right;
+				else return ptr;
 			}
 			return NULL;
 		}
@@ -399,15 +411,17 @@ namespace pfc {
 		}
 
 		template<typename t_param>
-		const t_storage * find_item_ptr(t_param const & p_item) const {
-			return __find_item_ptr(p_item);
-		}
+		const t_storage * find_item_ptr(t_param const & p_item) const {return _find_item_ptr(p_item);}
 
-		//! WARNING: caller must not alter the item in a way that changes the sort order.
+		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		template<typename t_param>
-		t_storage * find_item_ptr(t_param const & p_item) {
-			return __find_item_ptr(p_item);
-		}
+		t_storage * find_item_ptr(t_param const & p_item) { return _find_item_ptr(p_item); }
+
+		template<typename t_param> const_iterator find(t_param const & item) const { return _find_node_ptr(item);}
+
+		//! Unsafe! Caller must not modify items in a way that changes sort order!
+		template<typename t_param> iterator find(t_param const & item) { return _find_node_ptr(item);}
+		
 
 		template<typename t_param>
 		bool contains(const t_param & p_item) const {
@@ -446,7 +460,7 @@ namespace pfc {
 		}
 
 		//! Allows callback to modify the tree content.
-		//! WARNING: items must not be altered in a way that changes their sort order.
+		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		template<typename t_callback>
 		void _enumerate_var(t_callback & p_callback) { __enum_items_recur<t_node>(&*m_root,p_callback); }
 
@@ -470,9 +484,9 @@ namespace pfc {
 		
 		const_iterator first() const throw() {return _firstlast(false);}
 		const_iterator last() const throw() {return _firstlast(true);}
-		//Unsafe! Caller must not modify items in a way that changes sort order!
+		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		iterator _first_var() { return _firstlast(false); }
-		//Unsafe! Caller must not modify items in a way that changes sort order!
+		//! Unsafe! Caller must not modify items in a way that changes sort order!
 		iterator _last_var() { return _firstlast(true); }
 
 		template<typename t_param> bool get_first(t_param & p_item) const throw() {

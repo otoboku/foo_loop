@@ -23,7 +23,7 @@ public:
 		load_info_errors,		
 	};
 
-	//! No longer use - returns false always.
+	//! No longer used - returns false always.
 	__declspec(deprecated) virtual bool is_busy() = 0;
 	//! No longer used - returns false always.
 	__declspec(deprecated) virtual bool is_updating_disabled() = 0;
@@ -88,6 +88,13 @@ public:
 	virtual void on_done() = 0;
 
 	FB2K_MAKE_SERVICE_INTERFACE(metadb_hint_list,service_base);
+};
+//! \since 1.0
+class NOVTABLE metadb_hint_list_v2 : public metadb_hint_list {
+public:
+	virtual void add_hint_browse(metadb_handle_ptr const & p_location,const file_info & p_info, t_filetimestamp browseTS) = 0;
+
+	FB2K_MAKE_SERVICE_INTERFACE(metadb_hint_list_v2, metadb_hint_list);
 };
 
 //! New in 0.9.3. Extends metadb_io functionality with nonblocking versions of tag read/write functions, and some other utility features.
@@ -248,10 +255,11 @@ class titleformat_hook_function_params;
 
 /*!
 	Implementing this service lets you provide your own title-formatting fields that are parsed globally with each call to metadb_handle::format_title methods. \n
+	Note that this API is meant to allow you to add your own component-specific fields - not to overlay your data over standard fields or over fields provided by other components. Any attempts to interfere with standard fields will have severe ill effects. \n
 	This should be implemented only where absolutely necessary, for safety and performance reasons. Any expensive operations inside the process_field() method may severely damage performance of affected title-formatting calls. \n
 	You must NEVER make any other foobar2000 API calls from inside process_field, other than possibly querying information from the passed metadb_handle pointer; you should read your own implementation-specific private data and return as soon as possible. You must not make any assumptions about calling context (threading etc). \n
 	It is guaranteed that process_field() is called only inside a metadb lock scope so you can safely call "locked" metadb_handle methods on the metadb_handle pointer you get. You must not lock metadb by yourself inside process_field() - while it is always called from inside a metadb lock scope, it may be called from another thread than the one maintaining the lock because of multi-CPU optimizations active. \n
-	If there are multiple metadb_display_field_provider services registered providing fields of the same name, which one gets called is undefined. \n
+	If there are multiple metadb_display_field_provider services registered providing fields of the same name, the behavior is undefined. You must pick unique names for provided fields to ensure safe coexistence with other people's components. \n
 	IMPORTANT: Any components implementing metadb_display_field_provider MUST call metadb_io::dispatch_refresh() with affected metadb_handles whenever info that they present changes. Otherwise, anything rendering title-formatting strings that reference your data will not update properly, resulting in unreliable/broken output, repaint glitches, etc. \n
 	Do not expect a process_field() call each time somebody uses title formatting, calling code might perform its own caching of strings that you return, getting new ones only after metadb_io::dispatch_refresh() with relevant items. \n
 	If you can't reliably notify other components about changes of content of fields that you provide (such as when your fields provide some kind of global information and not information specific to item identified by passed metadb_handle), you should not be providing those fields in first place. You must not change returned values of your fields without dispatching appropriate notifications. \n
@@ -309,4 +317,3 @@ private:
 	metadb_handle_list m_handles;
 	pfc::array_t<file_info_impl> m_infos;
 };
-

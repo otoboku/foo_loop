@@ -1,7 +1,6 @@
 #ifndef _FOOBAR2000_SDK_HELPERS_H_
 #define _FOOBAR2000_SDK_HELPERS_H_
 
-#include "file_info_update_helper.h"
 #include "input_helpers.h"
 #include "create_directory_helper.h"
 #include "dialog_resize_helper.h"
@@ -14,7 +13,6 @@
 #include "cue_parser.h"
 #include "text_file_loader.h"
 #include "file_list_helper.h"
-#include "preload_info_helper.h"
 #include "listview_helper.h"
 #include "stream_buffer_helper.h"
 #include "file_info_const_impl.h"
@@ -41,5 +39,6 @@
 #include "ThreadUtils.h"	
 #include "VisUtils.h"
 #include "filetimetools.h"
+#include "ProfileCache.h"
 
 #endif //_FOOBAR2000_SDK_HELPERS_H_

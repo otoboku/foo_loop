@@ -183,6 +183,14 @@ public:
 		m_instance.set_logger(ptr);
 	}
 
+	void set_pause(bool paused) {
+		m_instance.set_pause(paused);
+	}
+	bool flush_on_pause() {
+		return m_instance.flush_on_pause();
+	}
+
+
 	// input_info_writer methods
 
 	void set_info(t_uint32 p_subsong,const file_info & p_info,abort_callback & p_abort) {
@@ -248,6 +256,13 @@ public:
 	}
 
 	void set_logger(event_logger::ptr ptr) {m_instance.set_logger(ptr);}
+
+	void set_pause(bool paused) {
+		m_instance.set_pause(paused);
+	}
+	bool flush_on_pause() {
+		return m_instance.flush_on_pause();
+	}
 
 	void retag_commit(abort_callback & p_abort) {}
 
