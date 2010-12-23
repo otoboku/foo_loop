@@ -386,7 +386,7 @@ namespace loop_helper {
 		}
 	};
 
-	class NOVTABLE loop_type_impl_base : public loop_type {
+	class loop_type_impl_base : public loop_type {
 	private:
 		t_uint32 m_sample_rate;
 		t_uint64 m_cur;
@@ -395,17 +395,21 @@ namespace loop_helper {
 		bool m_raw_support;
 		pfc::string8 m_info_prefix;
 		loop_event_point_list m_cur_points;
-		loop_event_point_list m_old_points, m_old_points_track;
 		pfc::list_permutation_t<loop_event_point::ptr> * m_cur_points_by_pos, * m_cur_points_by_prepos;
 		pfc::array_t<t_size> m_perm_by_pos, m_perm_by_prepos;
 		input_decoder::ptr m_current_input;
 		input_decoder_v2::ptr m_current_input_v2;
+		bool m_current_changed;
+		pfc::string8 m_current_path, m_current_fileext;
 		t_uint64 m_nextpointpos;
 		class dynamic_update_tracker {
 		public:
 			t_uint64 lastupdate;
 			t_uint64 updateperiod;
-			dynamic_update_tracker() : lastupdate(0), updateperiod(0) {}
+			loop_event_point_list m_old_points;
+			bool m_input_switched;
+
+			dynamic_update_tracker() : lastupdate(0), updateperiod(0), m_input_switched(false) {}
 			inline bool check(t_uint64 cur) const {
 				return lastupdate >= cur || (lastupdate + updateperiod) < cur;
 			}
@@ -471,17 +475,30 @@ namespace loop_helper {
 			return m_current_input_v2;
 		}
 
-		virtual void switch_input(input_decoder::ptr p_input) {
+		virtual __declspec(deprecated) void switch_input(input_decoder::ptr p_input) {
+			switch_input(p_input, NULL);
+		}
+
+		virtual void switch_input(input_decoder::ptr p_input, const char *p_path) {
 			// please specify reopen'd input...
 			m_current_input = p_input;
 			if (m_current_input_v2.is_valid()) m_current_input_v2.release();
-			if (!m_current_input->service_query_t(m_current_input_v2)) m_current_input_v2.release();
+			m_current_input->service_query_t(m_current_input_v2);
+			m_dynamic.m_input_switched = m_dynamic_track.m_input_switched = true;
+			m_current_changed = true;
+			if (p_path != NULL) {
+				m_current_path.set_string_(p_path);
+				m_current_fileext = pfc::string_filename_ext(p_path);
+			} else {
+				m_current_path.reset();
+				m_current_fileext.reset();
+			}
 			set_succ(true);
 		}
 
 		virtual void switch_points(loop_event_point_list p_list) {
-			m_old_points = m_cur_points;
-			m_old_points_track = m_cur_points;
+			m_dynamic.m_old_points = m_cur_points;
+			m_dynamic_track.m_old_points = m_cur_points;
 			m_cur_points = p_list;
 
 			m_perm_by_pos.set_size(m_cur_points.get_count());
@@ -618,6 +635,7 @@ namespace loop_helper {
 			return true;
 		}
 
+		//! called after switch_points or switch_input
 		virtual bool reset_dynamic_info(file_info & p_out) {
 			bool ret = false;
 			pfc::string8 name;
@@ -630,11 +648,39 @@ namespace loop_helper {
 		}
 
 		virtual bool set_dynamic_info_track(file_info & p_out) {
-			return false;
+			if (!m_current_changed) return false;
+			bool ret = false;
+			pfc::string8 name;
+			name << get_info_prefix() << "current_file";
+			if (!m_current_fileext.is_empty()) {
+				p_out.info_set(name, m_current_fileext);
+				ret = true;
+			} else {
+				ret |= p_out.info_remove(name);
+			}
+			name.reset();
+			if (!m_current_input.is_empty()) {
+				name << get_info_prefix() << "current_path_raw";
+				p_out.info_set(name, m_current_path);
+				ret = true;
+			} else {
+				ret |= p_out.info_remove(name);
+			}
+			m_current_changed = false;
+			return ret;
 		}
 
+		//! called after switch_points or switch_input
 		virtual bool reset_dynamic_info_track(file_info & p_out) {
-			return false;
+			if (!m_current_changed) return false;
+			bool ret = false;
+			pfc::string8 name;
+			name << get_info_prefix() << "current_file";
+			ret |= p_out.info_remove(name);
+			name.reset();
+			name << get_info_prefix() << "current_path_raw";
+			ret |= p_out.info_remove(name);
+			return ret;
 		}
 
 		virtual bool run_common(audio_chunk & p_chunk,mem_block_container * p_raw,abort_callback & p_abort) {
@@ -682,17 +728,11 @@ namespace loop_helper {
 			inline static bool parent_get(input_decoder::ptr & parent, file_info & p_out, double & p_timestamp_delta) {
 				return parent->get_dynamic_info(p_out, p_timestamp_delta);
 			}
-			inline static bool check_and_update(loop_type_impl_base & impl, t_uint64 cur) {
-				return impl.m_dynamic.check_and_update(cur);
-			}
 			inline static bool self_set(loop_type_impl_base & impl, file_info & p_out) {
 				return impl.set_dynamic_info(p_out);
 			}
 			inline static bool self_reset(loop_type_impl_base & impl, file_info & p_out) {
 				return impl.reset_dynamic_info(p_out);
-			}
-			inline static loop_event_point_list oldlist(loop_type_impl_base & impl) {
-				return impl.m_old_points;
 			}
 		};
 
@@ -710,25 +750,19 @@ namespace loop_helper {
 			inline static bool parent_get(input_decoder::ptr & parent, file_info & p_out, double & p_timestamp_delta) {
 				return parent->get_dynamic_info_track(p_out, p_timestamp_delta);
 			}
-			inline static bool check_and_update(loop_type_impl_base & impl, t_uint64 cur) {
-				return impl.m_dynamic_track.check_and_update(cur);
-			}
 			inline static bool self_set(loop_type_impl_base & impl, file_info & p_out) {
 				return impl.set_dynamic_info_track(p_out);
 			}
 			inline static bool self_reset(loop_type_impl_base & impl, file_info & p_out) {
 				return impl.reset_dynamic_info_track(p_out);
 			}
-			inline static loop_event_point_list oldlist(loop_type_impl_base & impl) {
-				return impl.m_old_points_track;
-			}
 		};
 
 		template <typename t_dispatcher>
-		inline bool get_dynamic_info_t(file_info & p_out,double & p_timestamp_delta) {
+		inline bool get_dynamic_info_t(file_info & p_out,double & p_timestamp_delta, dynamic_update_tracker & tracker) {
 			bool ret = t_dispatcher::parent_get(get_input(),p_out,p_timestamp_delta);
-			loop_event_point_list oldlist = t_dispatcher::oldlist(*this);
-			if (oldlist.get_count() != 0) {
+			loop_event_point_list & oldlist = tracker.m_old_points;
+			if (oldlist.get_count() != 0 || tracker.m_input_switched) {
 				ret |= t_dispatcher::self_reset(*this, p_out);
 				for (t_size n = 0, m = get_points().get_count(); n < m; ++n ) {
 					loop_event_point::ptr point = get_points()[n];
@@ -739,9 +773,10 @@ namespace loop_helper {
 					}
 				}
 				oldlist.remove_all();
+				tracker.m_input_switched = false;
 			}
 			if (!get_no_looping()) {
-				if (t_dispatcher::check_and_update(*this, get_cur())) {
+				if (tracker.check_and_update(get_cur())) {
 					p_timestamp_delta = !ret ? 0.5 : pfc::min_t<double>(0.5, p_timestamp_delta);
 					ret |= t_dispatcher::self_set(*this, p_out);
 					t_uint32 sample_rate = get_sample_rate();
@@ -760,7 +795,7 @@ namespace loop_helper {
 
 	public:
 		loop_type_impl_base() :
-		  m_sample_rate(0), m_cur(0), m_succ(false), m_raw_support(true), 
+		  m_sample_rate(0), m_cur(0), m_succ(false), m_raw_support(true), m_current_changed(false), 
 		  m_cur_points_by_pos(NULL), m_cur_points_by_prepos(NULL), m_info_prefix("loop_") {
 		}
 		~loop_type_impl_base() {
@@ -824,11 +859,11 @@ namespace loop_helper {
 
 		// other input_decoder methods
 		bool virtual get_dynamic_info(file_info & p_out,double & p_timestamp_delta) {
-			return get_dynamic_info_t<dispatch_dynamic_info>(p_out,p_timestamp_delta);
+			return get_dynamic_info_t<dispatch_dynamic_info>(p_out,p_timestamp_delta,m_dynamic);
 		}
 
 		bool virtual get_dynamic_info_track(file_info & p_out,double & p_timestamp_delta) {
-			return get_dynamic_info_t<dispatch_dynamic_track_info>(p_out,p_timestamp_delta);
+			return get_dynamic_info_t<dispatch_dynamic_track_info>(p_out,p_timestamp_delta,m_dynamic_track);
 		}
 		void virtual set_logger(event_logger::ptr ptr) {get_input_v2()->set_logger(ptr);}
 	};
@@ -883,6 +918,27 @@ namespace loop_helper {
 	template<typename t_instance_impl> class loop_type_factory_t :
 		public service_factory_single_t<loop_type_impl_t<t_instance_impl> > {};
 
+	class loop_type_entry_v2 : public loop_type_entry {
+	public:
+		//! default priority = 100, lower equals faster
+		virtual t_uint8 get_priority() const = 0;
+
+		FB2K_MAKE_SERVICE_INTERFACE(loop_type_entry_v2, loop_type_entry);
+	};
+
+	template<typename t_instance_impl>
+	class loop_type_impl_v2_t : public loop_type_entry_v2  {
+	public:
+		const char * get_name() const {return t_instance_impl::g_get_name();}
+		const char * get_short_name() const {return t_instance_impl::g_get_short_name();}
+		bool is_our_type(const char * type) const {return t_instance_impl::g_is_our_type(type);}
+		bool is_explicit() const {return t_instance_impl::g_is_explicit();}
+		loop_type::ptr instantiate() const {return new service_impl_t<t_instance_impl>();}
+		t_uint8 get_priority() const {return t_instance_impl::g_get_priority();}
+	};
+
+	template<typename t_instance_impl> class loop_type_factory_v2_t :
+		public service_factory_single_t<loop_type_impl_v2_t<t_instance_impl> > {};
 
 	class loop_type_none : public loop_type_impl_singleinput_base
 	{
@@ -899,7 +955,40 @@ namespace loop_helper {
 			if (p_reason == input_open_info_write) throw exception_io_unsupported_format();//our input does not support retagging.
 			open_path_helper(m_input, p_filehint, path, p_abort, p_from_redirect, p_skip_hints);
 			//m_points.remove_all();
-			switch_input(m_input);
+			switch_input(m_input, path);
+			switch_points(m_points);
+			return true;
+		}
+	};
+
+	class loop_type_entire : public loop_type_impl_singleinput_base
+	{
+	private:
+		input_decoder::ptr m_input;
+		loop_event_point_list m_points;
+	public:
+		static const char * g_get_name() {return "Entire File";}
+		static const char * g_get_short_name() {return "entire";}
+		static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "entire");}
+		static bool g_is_explicit() {return true;}
+		virtual bool parse(const char * ptr) {
+			return true;
+		}
+		virtual bool open_path_internal(file::ptr p_filehint,const char * path,t_input_open_reason p_reason,abort_callback & p_abort,bool p_from_redirect,bool p_skip_hints) {
+			if (p_reason == input_open_info_write) throw exception_io_unsupported_format();//our input does not support retagging.
+			try {
+				open_path_helper(m_input, p_filehint, path, p_abort, p_from_redirect,p_skip_hints);
+			} catch (exception_io_not_found) {
+				return false;
+			}
+			switch_input(m_input, path);
+			file_info_impl p_info;
+			get_input()->get_info(0, p_info, p_abort);
+			m_points.remove_all();
+			loop_event_point_simple * point = new service_impl_t<loop_event_point_simple>();
+			point->from = p_info.info_get_length_samples();
+			point->to = 0;
+			m_points.add_item(point);
 			switch_points(m_points);
 			return true;
 		}

@@ -20,6 +20,12 @@ see also:
 #define SLI_MIN_FLAG_VALUE 0
 #define SLI_MAX_FLAG_VALUE 9999
 
+// {808359F5-36A6-4b67-BF0D-5FA83C404035}
+static const GUID guid_cfg_sli_label_log = 
+{ 0x808359f5, 0x36a6, 0x4b67, { 0xbf, 0xd, 0x5f, 0xa8, 0x3c, 0x40, 0x40, 0x35 } };
+advconfig_checkbox_factory cfg_sli_label_logging("SLI Label Logging",guid_cfg_sli_label_log,loop_type_base::guid_cfg_branch_loop,0,false);
+
+
 typedef pfc::array_staticsize_t<int> t_flags_array;
 class loop_condition {
 public:
@@ -208,9 +214,10 @@ public:
 		}
 	}
 	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
-		return process(p_input, p_abort);
+		return process(p_input, p_start, p_chunk, p_abort);
 	}
 	virtual bool process(loop_type_base::ptr p_input, abort_callback & p_abort);
+	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, abort_callback & p_abort);
 };
 
 class sli_label_formula {
@@ -552,7 +559,7 @@ public:
 	virtual t_size get_crossfade_samples_half () const {return m_crossfade_samples_half;}
 	virtual bool open_path_internal(file::ptr p_filehint,const char * path,t_input_open_reason p_reason,abort_callback & p_abort,bool p_from_redirect,bool p_skip_hints) {
 		open_path_helper(m_input, p_filehint, path, p_abort, p_from_redirect,p_skip_hints);
-		switch_input(m_input);
+		switch_input(m_input, path);
 		return true;
 	}
 	virtual void open_decoding_internal(t_uint32 subsong, t_uint32 flags, abort_callback & p_abort) {
@@ -562,6 +569,7 @@ public:
 			if (m_points[i]->service_query_t<sli_link>(link)) {
 				if (link->set_smooth_samples(m_crossfade_samples_half)) {
 					set_is_raw_supported(false);
+					break;
 				}
 			}
 		}
@@ -589,14 +597,12 @@ public:
 		return true;
 	}
 
-	virtual bool reset_dynamic_info(file_info & p_out) {
-		return loop_type_impl_base::reset_dynamic_info(p_out) | p_out.info_remove("sli_flags");
-	}
 	bool check_condition(sli_link_impl & p_link) {
 		if (m_no_flags || p_link.condition == NULL || !p_link.condition->is_valid) 
 			return true; // invalid is always true
 		return p_link.condition->check(m_flags[p_link.condvar], p_link.refvalue);
 	}
+
 	void process_formula(const char * p_formula) {
 		if (m_no_flags) return;
 		sli_label_formula formula;
@@ -676,6 +682,15 @@ bool sli_link_impl::process(loop_type_base::ptr p_input, t_uint64 p_start, audio
 	return true;
 }
 
+bool sli_label::process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, abort_callback & p_abort) {
+	if (cfg_sli_label_logging.get()) {
+		if ((p_start + p_chunk.get_sample_count()) > get_position())
+			console::formatter() << "SLI: Label: " << name << " at " << 
+			format_samples_ex(get_position(), p_chunk.get_sample_rate());
+	}
+	return process(p_input, p_abort);
+}
+
 bool sli_label::process(loop_type_base::ptr p_input, abort_callback & p_abort) {
 	// this event do not process on no_looping
 	if (p_input->get_no_looping()) return false;
@@ -719,5 +734,5 @@ public:
 static input_singletrack_factory_ex_t<input_sli, input_entry::flag_redirect, input_decoder_v2> g_input_sli_factory;
 
 
-DECLARE_COMPONENT_VERSION("sli loop manager","0.3-dev",NULL);
+//DECLARE_COMPONENT_VERSION("sli loop manager","0.3-dev",NULL);
 DECLARE_FILE_TYPE_EX("SLI", "SLI Loop Information File","SLI Loop Information Files");
