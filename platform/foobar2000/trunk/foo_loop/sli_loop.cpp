@@ -17,6 +17,7 @@ see also:
 #include "looping.h"
 
 #define SLI_FLAGS 16
+typedef unsigned int t_sli_value;
 #define SLI_MIN_FLAG_VALUE 0
 #define SLI_MAX_FLAG_VALUE 9999
 
@@ -34,20 +35,20 @@ public:
 	const bool is_valid;
 	loop_condition(const char * confname, const char * symbol, bool is_valid) :
 	  confname(confname), symbol(symbol), is_valid(is_valid) {}
-	virtual bool check(unsigned int a, unsigned int b) = 0;
+	virtual bool check(t_sli_value a, t_sli_value b) = 0;
 };
 
 class loop_condition_no : public loop_condition {
 public:
 	loop_condition_no() : loop_condition("no", NULL, false) {};
-	virtual bool check(unsigned int a, unsigned int b) { return true; }
+	virtual bool check(t_sli_value a, t_sli_value b) { return true; }
 };
 
 #define DEFINE_LOOP_CONDITION(name, op) \
 class loop_condition_ ##name : public loop_condition { \
 public: \
 	loop_condition_ ##name () : loop_condition( #name, #op, true ) {}; \
-	virtual bool check(unsigned int a, unsigned int b) { return a op b; } \
+	virtual bool check(t_sli_value a, t_sli_value b) { return a op b; } \
 };
 
 DEFINE_LOOP_CONDITION(eq, ==);
@@ -64,54 +65,40 @@ public:
 	const bool require_operand;
 	formula_operator(const char * symbol, bool require_operand) :
 		symbol(symbol), require_operand(require_operand) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) = 0;
+	virtual t_sli_value calculate(t_sli_value original, t_sli_value operand) = 0;
 };
 
-class formula_operator_set : public formula_operator {
+class sli_flag_value_clipper {
 public:
-	formula_operator_set() : formula_operator("=", true) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) {
-		return operand;
+	static inline t_sli_value check_clip(t_sli_value value) {
+		return pfc::clip_t<t_sli_value>(value, SLI_MIN_FLAG_VALUE, SLI_MAX_FLAG_VALUE);
+	}
+	static inline t_sli_value check_min(t_sli_value value) {
+		return pfc::max_t<t_sli_value>(value, SLI_MIN_FLAG_VALUE);
+	}
+	static inline t_sli_value check_max(t_sli_value value) {
+		return pfc::min_t<t_sli_value>(value, SLI_MAX_FLAG_VALUE);
 	}
 };
 
-class formula_operator_add : public formula_operator {
-public:
-	formula_operator_add() : formula_operator("+=", true) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) {
-		return pfc::min_t<unsigned int>(original + operand, SLI_MAX_FLAG_VALUE);
-	}
+#define DEFINE_FORMULA_OP(name, symbol, value, clipper) \
+class formula_operator_ ##name : public formula_operator { \
+public: \
+	formula_operator_ ##name() : formula_operator(#symbol, true) {}; \
+	virtual t_sli_value calculate(t_sli_value original, t_sli_value operand) { \
+		return sli_flag_value_clipper::check_ ##clipper(value); \
+	} \
 };
 
-class formula_operator_sub : public formula_operator {
-public:
-	formula_operator_sub() : formula_operator("-=", true) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) {
-		if (original >= operand) return original - operand;
-		else return 0;
-	}
-};
-
-class formula_operator_inc : public formula_operator {
-public:
-	formula_operator_inc() : formula_operator("++", false) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) {
-		if (original == SLI_MAX_FLAG_VALUE) return original;
-		else return original + 1;
-	}
-};
-
-class formula_operator_dec : public formula_operator {
-public:
-	formula_operator_dec() : formula_operator("--", false) {}
-	virtual unsigned int calculate(unsigned int original, unsigned int operand) {
-		if (original >= 1) return original - 1;
-		else return 0;
-	}
-};
+DEFINE_FORMULA_OP(set, =, operand, clip);
+DEFINE_FORMULA_OP(add, +=, original+operand, max);
+DEFINE_FORMULA_OP(sub, -=, original-operand, min);
+DEFINE_FORMULA_OP(inc, ++, original+1, max);
+DEFINE_FORMULA_OP(dec, --, original-1, min);
 
 class sli_link : public loop_event_point_baseimpl {
 public:
+	//! set smooth sample count. return true if this link use smoothing, otherwise false.
 	virtual bool set_smooth_samples(t_size samples) = 0;
 	FB2K_MAKE_SERVICE_INTERFACE(sli_link, loop_event_point);
 };
@@ -120,7 +107,8 @@ class sli_link_impl : public sli_link {
 private:
 	t_size smooth_samples;
 protected:
-	sli_link_impl() : from(0), to(0), smooth(false), condition(NULL), refvalue(0), condvar(0), smooth_samples(0) {}
+	sli_link_impl() : from(0), to(0), smooth(false), condition(NULL), refvalue(0), condvar(0), smooth_samples(0),
+		seens(0) {}
 	~sli_link_impl() {
 		if (condition != NULL) delete condition;
 	}
@@ -136,8 +124,9 @@ public:
 	t_uint64 to;
 	bool smooth;
 	loop_condition * condition;
-	unsigned int refvalue;
-	unsigned int condvar;
+	t_sli_value refvalue;
+	t_sli_value condvar;
+	t_size seens;
 
 	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
 		pfc::string8 name, buf;
@@ -167,6 +156,20 @@ public:
 
 		p_info.info_set(name, buf);	
 	}
+
+	virtual bool has_dynamic_info() const {return true;}
+	virtual bool set_dynamic_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
+		pfc::string8 name;
+		name << p_prefix << "seens";
+		p_info.info_set_int(name, seens);
+		return true;
+	}
+	virtual bool reset_dynamic_info(file_info & p_info, const char * p_prefix) {
+		pfc::string8 name;
+		name << p_prefix << "seens";
+		return p_info.info_remove(name);
+	}
+
 	virtual void check() const {
 		if (from == to) throw exception_loop_bad_point();
 	}
@@ -176,15 +179,18 @@ public:
 		// this event do not process on no_looping
 		if (p_input->get_no_looping() || !check_condition(p_input)) return false;
 		p_input->raw_seek(to, p_abort);
+		++seens;
 		return true;
 	}
 };
 
 class sli_label : public loop_event_point_baseimpl {
 public:
+	sli_label() : loop_event_point_baseimpl(on_looping | on_no_looping), position(0), seens(0) {}
 	virtual t_uint64 get_position() const {return position;}
 	virtual t_uint64 get_prepare_position() const {return position;}
 	t_uint64 position;
+	t_size seens;
 	pfc::string8 name;
 	virtual void check() const {}
 	virtual void get_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
@@ -213,11 +219,24 @@ public:
 			}
 		}
 	}
+
+	virtual bool has_dynamic_info() const {return true;}
+	virtual bool set_dynamic_info(file_info & p_info, const char * p_prefix, t_uint32 sample_rate) {
+		pfc::string8 name;
+		name << p_prefix << "seens";
+		p_info.info_set_int(name, seens);
+		return true;
+	}
+	virtual bool reset_dynamic_info(file_info & p_info, const char * p_prefix) {
+		pfc::string8 name;
+		name << p_prefix << "seens";
+		return p_info.info_remove(name);
+	}
+
 	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
-		return process(p_input, p_start, p_chunk, p_abort);
+		return process(p_input, p_abort);
 	}
 	virtual bool process(loop_type_base::ptr p_input, abort_callback & p_abort);
-	virtual bool process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, abort_callback & p_abort);
 };
 
 class sli_label_formula {
@@ -226,10 +245,10 @@ public:
 	~sli_label_formula() {
 		if (oper != NULL) delete oper;
 	}
-	unsigned int flag;
+	t_sli_value flag;
 	formula_operator * oper;
 	bool indirect;
-	unsigned int value;
+	t_sli_value value;
 };
 
 bool parse_sli_entity(const char * & ptr,pfc::string8 & name,pfc::string8 & value) {
@@ -317,10 +336,10 @@ bool parse_sli_link(const char * & ptr,sli_link_impl &link) {
 				}
 			} else if (!pfc::stricmp_ascii(name, "RefValue")) {
 				if (!pfc::string_is_numeric(value)) return false;
-				link.refvalue = pfc::clip_t(atoi(value), SLI_MIN_FLAG_VALUE, SLI_MAX_FLAG_VALUE);
+				link.refvalue = pfc::clip_t<t_sli_value>(pfc::atoui_ex(value, ~0), SLI_MIN_FLAG_VALUE, SLI_MAX_FLAG_VALUE);
 			} else if (!pfc::stricmp_ascii(name, "CondVar")) {
 				if (!pfc::string_is_numeric(value)) return false;
-				link.condvar = pfc::clip_t(atoi(value), 0, SLI_FLAGS-1);
+				link.condvar = pfc::clip_t<t_sli_value>(pfc::atoui_ex(value, ~0), 0, SLI_FLAGS-1);
 			} else {
 				return false;
 			}
@@ -370,7 +389,7 @@ bool parse_sli_label_formula(const char * p_formula, sli_label_formula & p_out) 
 	ptr = 0;
 	while (pfc::char_is_numeric(p[ptr])) ptr++;
 	if (ptr == 0) return false;
-	p_out.flag = pfc::clip_t<unsigned int>(pfc::atoui_ex(p, ptr), 0, SLI_FLAGS-1);
+	p_out.flag = pfc::clip_t<t_sli_value>(pfc::atoui_ex(p, ptr), 0, SLI_FLAGS-1);
 	p += ptr;
 	// after flag, should be ']'
 	if (*p != ']') return false;
@@ -412,8 +431,10 @@ bool parse_sli_label_formula(const char * p_formula, sli_label_formula & p_out) 
 	ptr = 0;
 	while (pfc::char_is_numeric(p[ptr])) ptr++;
 	if (ptr == 0) return false;
-	p_out.value = pfc::clip_t<unsigned int>(pfc::atoui_ex(p, ptr), SLI_MIN_FLAG_VALUE,
-		(p_out.indirect ? SLI_FLAGS-1 : SLI_MAX_FLAG_VALUE));
+	if (p_out.indirect)
+		p_out.value = pfc::clip_t<t_sli_value>(pfc::atoui_ex(p, ptr), 0, SLI_FLAGS-1);
+	else
+		p_out.value = pfc::clip_t<t_sli_value>(pfc::atoui_ex(p, ptr), SLI_MIN_FLAG_VALUE, SLI_MAX_FLAG_VALUE);
 	p += ptr;
 	if (p_out.indirect) {
 		if (*p != ']') return false;
@@ -609,7 +630,7 @@ public:
 		if (parse_sli_label_formula(p_formula, formula)) {
 			t_size flagnum = m_flags.get_size();
 			t_size flag = formula.flag;
-			unsigned int value = formula.value;
+			t_sli_value value = formula.value;
 			if (formula.indirect) {
 				value = m_flags[value];
 			}
@@ -640,6 +661,7 @@ bool sli_link_impl::check_condition(loop_type_base::ptr p_input) {
 bool sli_link_impl::process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, mem_block_container * p_raw, abort_callback & p_abort) {
 	// this event do not process on no_looping
 	if ((p_input->get_no_looping() && from >= to) || !check_condition(p_input)) return false;
+	++seens;
 	t_size point = pfc::downcast_guarded<t_size>(from - p_start);
 	loop_type_sli::ptr p_input_special;
 	if (!smooth || !p_input->service_query_t<loop_type_sli>(p_input_special)) {
@@ -648,16 +670,14 @@ bool sli_link_impl::process(loop_type_base::ptr p_input, t_uint64 p_start, audio
 		return true;
 	}
 	// smooth
-	PFC_ASSERT(p_raw == NULL);
+	PFC_ASSERT(p_raw == NULL); // we do not support raw streaming with smoothing
 	t_size smooth_first_samples = smooth_samples;
 	t_size require_samples = point + p_input_special->get_crossfade_samples_half();
 	t_size samples = p_chunk.get_sample_count();
-	if (require_samples > samples) {
+	if (require_samples > samples)
 		samples += p_input->get_more_chunk(p_chunk, p_raw, p_abort, require_samples - samples);
-	}
-	if (require_samples < samples) {
+	if (require_samples < samples)
 		truncate_chunk(p_chunk, p_raw, require_samples);// only debug mode ?
-	}
 	t_size smooth_latter_samples = pfc::min_t(require_samples, samples) - point;
 	// seek
 	p_input->raw_seek(to - smooth_first_samples, p_abort);
@@ -682,18 +702,13 @@ bool sli_link_impl::process(loop_type_base::ptr p_input, t_uint64 p_start, audio
 	return true;
 }
 
-bool sli_label::process(loop_type_base::ptr p_input, t_uint64 p_start, audio_chunk & p_chunk, abort_callback & p_abort) {
-	if (cfg_sli_label_logging.get()) {
-		if ((p_start + p_chunk.get_sample_count()) > get_position())
-			console::formatter() << "SLI: Label: " << name << " at " << 
-			format_samples_ex(get_position(), p_chunk.get_sample_rate());
-	}
-	return process(p_input, p_abort);
-}
-
 bool sli_label::process(loop_type_base::ptr p_input, abort_callback & p_abort) {
 	// this event do not process on no_looping
-	if (p_input->get_no_looping()) return false;
+	if (cfg_sli_label_logging.get()) {
+		console::formatter() << "SLI: Label: " << name << " at " << 
+		format_samples_ex(get_position(), p_input->get_sample_rate());
+	}
+	++seens;
 	if (name[0] != ':') return false;
 	loop_type_sli::ptr p_input_special;
 	if (p_input->service_query_t<loop_type_sli>(p_input_special)) {
@@ -723,7 +738,6 @@ public:
 		} else {
 			throw exception_io_data();
 		}
-		PFC_ASSERT(m_looptype.is_valid());
 	}
 
 	static bool g_is_our_content_type(const char * p_content_type) {return false;}
