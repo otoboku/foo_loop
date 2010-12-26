@@ -187,6 +187,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\standard.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\stdafx.cpp"
 				>
 				<FileConfiguration
