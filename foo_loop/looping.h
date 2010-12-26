@@ -590,7 +590,8 @@ namespace loop_helper {
 			t_size nums = get_points_by_pos().get_count();
 			t_size n;
 			loop_event_point::ptr point;
-			bsearch_points_by_pos(p_start, n);
+			// skip p_start itself, because it was proceeded as older's end
+			bsearch_points_by_pos(p_start+1, n);
 			t_uint64 end = p_start + p_chunk.get_sample_count();
 			t_size preplen = get_prepare_length(p_start, end, nums);
 			if (preplen > 0)
@@ -694,8 +695,8 @@ namespace loop_helper {
 					}
 				} else {
 					if (cfg_loop_debug.get())
-						console_looping_debug_formatter() << "dispatch EOF ((t_uint64)-1) event";
-					// try dispatching (t_uint64)-1 event;
+						console_looping_debug_formatter() << "dispatch EOF event";
+					// try dispatching EOF event;
 					do_events((t_uint64)-1, p_abort);
 					retries--;
 					continue;
