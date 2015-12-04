@@ -80,8 +80,10 @@ public:
 protected:
 	list_base_const_t() {}
 	~list_base_const_t() {}
-private:
-	const t_self & operator=(const t_self &) {throw pfc::exception_not_implemented();}
+
+	list_base_const_t(const t_self &) {}
+	void operator=(const t_self &) {}
+
 };
 
 
@@ -294,6 +296,8 @@ public:
 protected:
 	list_base_t() {}
 	~list_base_t() {}
+	list_base_t(const t_self&) {}
+	void operator=(const t_self&) {}
 };
 
 

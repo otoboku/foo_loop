@@ -2,6 +2,8 @@
 #include <stdafx.h>
 #include "looping.h"
 
+#undef FOOGUIDDECL
+#define FOOGUIDDECL
 
 namespace loop_helper {
 	void console_complain_looping(const char * what, const char * msg) {
@@ -107,8 +109,8 @@ FOOGUIDDECL const GUID loop_type_base::class_guid =
 //{ 0xd751ad10, 0x1ec1, 0x4711, { 0x86, 0x98, 0x22, 0xed, 0x1c, 0x90, 0x5, 0x3 } };
 
 //// {2910A6A6-A12B-414f-971B-90A65F79439B}
-FOOGUIDDECL const GUID loop_event_point::class_guid = 
-{ 0x2910a6a6, 0xa12b, 0x414f, { 0x97, 0x1b, 0x90, 0xa6, 0x5f, 0x79, 0x43, 0x9b } };
+//FOOGUIDDECL const GUID loop_event_point::class_guid = 
+//{ 0x2910a6a6, 0xa12b, 0x414f, { 0x97, 0x1b, 0x90, 0xa6, 0x5f, 0x79, 0x43, 0x9b } };
 
 //// {566BCC79-7370-48c0-A7CB-5E47C4C17A86}
 FOOGUIDDECL const GUID loop_type_entry::class_guid = 
