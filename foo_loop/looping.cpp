@@ -45,12 +45,13 @@ namespace loop_helper {
 		while(isspace((unsigned char) *ptr)) ptr++;
 		if (*ptr != '=') return false;
 		ptr++;
+		while(isspace((unsigned char) *ptr)) ptr++;
 		// check delimiter
 		if (*ptr == '\'' || *ptr == '"') {
 			delimiter = *ptr;
 			ptr++;
 		}
-		if (!*ptr) false;
+		if (!*ptr) return false;
 
 		n = 0;
 		if (delimiter == '\0') {
@@ -58,10 +59,10 @@ namespace loop_helper {
 		} else {
 			while(tmp = ptr[n], tmp && tmp != delimiter) n++;
 		}
-		if (!ptr[n]) return false;
+		//if (!ptr[n]) return false;
 		value.set_string(ptr, n);
 		ptr += n;
-		if (*ptr == delimiter) ptr++;
+		if (delimiter && *ptr == delimiter) ptr++;
 		while(*ptr == ';' || isspace((unsigned char) *ptr)) ptr++;
 		return true;
 	}

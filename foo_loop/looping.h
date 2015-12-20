@@ -2,6 +2,10 @@ namespace loop_helper {
 	extern advconfig_checkbox_factory cfg_loop_debug;
 	extern advconfig_checkbox_factory cfg_loop_disable;
 
+	PFC_DECLARE_EXCEPTION(exception_loop_unsupported_type,		pfc::exception,			"Unsupported loop type");
+	PFC_DECLARE_EXCEPTION(exception_loop_target_open_failed,	pfc::exception,			"Target object to loop open failed");
+	PFC_DECLARE_EXCEPTION(exception_loop_target_not_found,		pfc::exception,			"Target object to loop not found");
+
 	class console_looping_formatter : public console::formatter {
 	public:
 		console_looping_formatter() {

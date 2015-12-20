@@ -34,14 +34,52 @@ public:
 		if (p_reason == input_open_info_write) throw exception_io_unsupported_format();//our input does not support retagging.
 		m_loopfile = p_filehint;
 		m_path = p_path;
-		input_open_file_helper(m_loopfile,p_path,p_reason,p_abort);//if m_file is null, opens file with appropriate privileges for our operation (read/write for writing tags, read-only otherwise).
-		bool is_utf8;
-		text_file_loader::read(m_loopfile,p_abort,m_loopcontent,is_utf8);
+		pfc::string8 p_content_basepath;
+
+		t_size len_path		= pfc::strlen_t(p_path);
+		t_size pos_filename = pfc::scan_filename(p_path);
+		t_size pos_dot1		= pfc::string_find_last(p_path, '.');
+		t_size pos_dot2		= pfc::string_find_last(p_path, '.', pos_dot1 - 1);
+		t_size pos_question = pfc::string_find_first(p_path, '?', pos_filename);
+
+		const t_size LEN_CONTENT_HEAD = tabsize(".$=[") - 1;
+
+		// filename.ext.loop?LOOP_CONTENT
+		if (pos_question != ~0)
+		{
+			p_content_basepath.set_string(p_path, pos_dot1);
+			m_loopcontent.set_string(p_path + pos_question + 1, len_path - pos_question - 1);
+			m_loopcontent.replace_char('?', ' ');
+		}
+		else
+		// filename.ext.$=[LOOP_CONTENT].loop
+		if (pos_dot2 != ~0 &&
+			pos_dot2 > pos_filename &&
+			p_path[pos_dot1 - 1] == ']' &&
+			pfc::_strcmp_partial_ex(p_path + pos_dot2, LEN_CONTENT_HEAD, ".$=[", LEN_CONTENT_HEAD) == 0)
+		{
+			p_content_basepath.set_string(p_path, pos_dot2);
+			m_loopcontent.set_string(p_path + pos_dot2 + LEN_CONTENT_HEAD, pos_dot1 - pos_dot2 - LEN_CONTENT_HEAD - 1);
+		}
+		// filename.ext.loop
+		else
+		{
+			p_content_basepath.set_string(p_path, pos_dot1);
+			try
+			{
+				input_open_file_helper(m_loopfile, p_path, p_reason, p_abort);
+				bool is_utf8;
+				text_file_loader::read(m_loopfile, p_abort, m_loopcontent, is_utf8);
+			}
+			catch (exception_io_not_found) {}
+		}
+
 		const char * p_content = m_loopcontent;
 		pfc::string8 looptype;
-		parse_looptype(p_content, looptype);
-		pfc::string8 p_content_basepath;
-		p_content_basepath.set_string(p_path, pfc::strlen_t(p_path) - 5); // .loop
+		if (!parse_looptype(p_content, looptype))
+		{
+			p_content = m_loopcontent;
+		}
 		service_enum_t<loop_type_entry> e;
 		loop_type_entry::ptr ptr;
 		pfc::list_t<loop_type_prioritized_entry> ents;
@@ -73,6 +111,10 @@ public:
 			}
 			ents.remove_all();
 		}
+		else if (type_specified)
+		{
+			throw exception_loop_unsupported_type();
+		}
 
 		if (m_looptype.is_empty()) {
 			//console::formatter() << "loop parsing failed, resume to normal playback: \"" << file_path_display(p_path) << "\"";
@@ -82,7 +124,12 @@ public:
 				m_loopentry = ptr;
 				m_looptype = instance;
 			}
-			PFC_ASSERT(m_looptype.is_valid()); // parse error on input_loop_type_entire !?
+			else
+			{
+				throw exception_loop_target_open_failed();
+			}
+
+			//PFC_ASSERT(m_looptype.is_valid()); // parse error on input_loop_type_entire !?
 		}
 	}
 

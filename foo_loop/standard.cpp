@@ -12,13 +12,90 @@ class loop_type_loopstartlength : public loop_type_impl_singleinput_base
 private:
 	input_decoder::ptr m_input;
 	loop_event_point_list m_points;
+	t_uint64 m_loopstart, m_looplength;
+	bool m_by_meta;
 public:
 	static const char * g_get_name() {return "LoopStart/LoopLength";}
 	static const char * g_get_short_name() {return "loopstartlength";}
-	static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "loopstartlength");}
+	static bool g_is_our_type(const char * type) { return !pfc::stringCompareCaseInsensitive(type, "loopstartlength") || !pfc::stringCompareCaseInsensitive(type, "sl"); }
 	static bool g_is_explicit() {return false;}
 	static t_uint8 g_get_priority() {return 50;} // light weight, so probe earlier
 	virtual bool parse(const char * ptr) {
+		pfc::string8 name, value;
+		m_loopstart = 0;
+		m_looplength = 0;
+		m_by_meta = true;
+		bool loopstart_found = false;
+		bool looplength_found = false;
+		bool loopend_found = false;
+		t_uint64 m_loopend = 0;
+
+		// [0-9]+ [0-9]+
+		if (pfc::string_find_first(ptr, '=') == ~0)
+		{
+			char tmp;
+			t_size n = 0;
+			while (tmp = *ptr, tmp && !pfc::char_is_ascii_alphanumeric(tmp)) ++ptr;
+			while (tmp = ptr[n], pfc::char_is_ascii_alphanumeric(tmp)) n++;
+			if (!tmp) return true;
+			m_loopstart = pfc::atoui64_ex(ptr, n);
+			ptr += n;
+
+			while (tmp = *ptr, tmp && !pfc::char_is_ascii_alphanumeric(tmp)) ++ptr;
+			if (!tmp) return true;
+			n = 0;
+			while (tmp = ptr[n], pfc::char_is_ascii_alphanumeric(tmp)) n++;
+			m_looplength = pfc::atoui64_ex(ptr, n);
+
+			if (m_looplength) m_by_meta = false;
+			return true;
+		}
+
+		while (parse_entity(ptr, name, value)) {
+			for (;;)
+			{
+				if (!loopstart_found && (!pfc::stringCompareCaseInsensitive(name, "LOOPSTART") || !pfc::stringCompareCaseInsensitive(name, "START")))
+				{
+					m_loopstart = pfc::atoui64_ex(value, ~0);
+					loopstart_found = true;
+					break;
+				}
+				if (!looplength_found && (!pfc::stringCompareCaseInsensitive(name, "LOOPLENGTH") || !pfc::stringCompareCaseInsensitive(name, "LENGTH")))
+				{
+					m_looplength = pfc::atoui64_ex(value, ~0);
+					if (m_looplength) looplength_found = true;
+					break;
+				}
+				if (!loopend_found && (!pfc::stringCompareCaseInsensitive(name, "LOOPEND") || !pfc::stringCompareCaseInsensitive(name, "END")))
+				{
+					m_loopend = pfc::atoui64_ex(value, ~0);
+					if (m_loopend > m_loopstart) loopend_found = true;
+					break;
+				}
+				break;
+			}
+			if (loopstart_found)
+			{
+				if (looplength_found)
+				{
+					m_by_meta = false;
+					break;
+				}
+				if (loopend_found)
+				{
+					if (m_loopend > m_loopstart)
+					{
+						m_looplength = m_loopend - m_loopstart;
+						m_by_meta = false;
+						break;
+					}
+					else
+					{
+						loopend_found = false;
+					}
+				}
+			}
+		}
 		return true;
 	}
 	virtual bool open_path_internal(file::ptr p_filehint,const char * path,t_input_open_reason p_reason,abort_callback & p_abort,bool p_from_redirect,bool p_skip_hints) {
@@ -32,14 +109,20 @@ public:
 		file_info_impl p_info;
 		get_input()->get_info(0, p_info, p_abort);
 		m_points.remove_all();
-		if (p_info.meta_get_count_by_name("LOOPSTART") != 1 ||
-			p_info.meta_get_count_by_name("LOOPLENGTH") != 1)
-			return false;
+		if (m_by_meta)
+		{
+			if (p_info.meta_get_count_by_name("LOOPSTART") != 1 ||
+				p_info.meta_get_count_by_name("LOOPLENGTH") != 1)
+				return false;
+		}
 		loop_event_point_simple * point = new service_impl_t<loop_event_point_simple>();
-		t_uint64 start = pfc::atoui64_ex(p_info.meta_get("LOOPSTART", 0), ~0);
-		t_uint64 length = pfc::atoui64_ex(p_info.meta_get("LOOPLENGTH", 0), ~0);
-		point->from = start + length;
-		point->to = start;
+		if (m_by_meta)
+		{
+			m_loopstart = pfc::atoui64_ex(p_info.meta_get("LOOPSTART", 0), ~0);
+			m_looplength = pfc::atoui64_ex(p_info.meta_get("LOOPLENGTH", 0), ~0);
+		}
+		point->from = m_loopstart + m_looplength;
+		point->to = m_loopstart;
 		m_points.add_item(point);
 		switch_points(m_points);
 		return true;
@@ -50,7 +133,7 @@ public:
 	}
 };
 
-static loop_type_factory_t<loop_type_loopstartlength> g_loop_type_loopstartlength;
+static loop_type_factory_v2_t<loop_type_loopstartlength> g_loop_type_loopstartlength;
 
 class loop_event_point_twofiles_eof : public loop_event_point_baseimpl {
 public:
@@ -106,12 +189,37 @@ protected:
 public:
 	static const char * g_get_name() {return "Two Files (head and body)";}
 	static const char * g_get_short_name() {return "twofiles";}
-	static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "twofiles");}
+	static bool g_is_our_type(const char * type) { return !pfc::stringCompareCaseInsensitive(type, "twofiles") || !pfc::stringCompareCaseInsensitive(type, "2f"); }
 	static bool g_is_explicit() {return false;}
 	virtual bool parse(const char * ptr) {
 		pfc::string8 name, value;
 		m_autoprobe = true;
+		bool head_suffix_found = false;
+		bool body_suffix_found = false;
 		while (parse_entity(ptr, name, value)) {
+			for (;;)
+			{
+				if (!head_suffix_found && (!pfc::stringCompareCaseInsensitive(name, "head-suffix") || !pfc::stringCompareCaseInsensitive(name, "head")))
+				{
+					m_head.suffix = value;
+					m_autoprobe = false;
+					head_suffix_found = true;
+					break;
+				}
+				if (!body_suffix_found && (!pfc::stringCompareCaseInsensitive(name, "body-suffix") || !pfc::stringCompareCaseInsensitive(name, "body")))
+				{
+					m_body.suffix = value;
+					m_autoprobe = false;
+					body_suffix_found = true;
+					break;
+				}
+				break;
+			}
+			if (body_suffix_found && head_suffix_found)
+			{
+				break;
+			}
+			/*
 			if (!pfc::stringCompareCaseInsensitive(name, "head-suffix")) {
 				m_head.suffix = value;
 				m_autoprobe = false;
@@ -121,7 +229,7 @@ public:
 			} else {
 				// ignore unknown entities
 				//return false;
-			}
+			}*/
 		}
 		if (!m_autoprobe && m_head.suffix == m_body.suffix) return false;
 		return true;
@@ -275,7 +383,7 @@ private:
 public:
 	static const char * g_get_name() {return "Wave(RIFF) Sampler";}
 	static const char * g_get_short_name() {return "sampler";}
-	static bool g_is_our_type(const char * type) {return !pfc::stringCompareCaseInsensitive(type, "sampler");}
+	static bool g_is_our_type(const char * type) { return !pfc::stringCompareCaseInsensitive(type, "sampler") || !pfc::stringCompareCaseInsensitive(type, "sm"); }
 	static bool g_is_explicit() {return false;}
 	static t_uint8 g_get_priority() {return 150;} // heavy weight, so probe later
 	virtual bool parse(const char * ptr) {
